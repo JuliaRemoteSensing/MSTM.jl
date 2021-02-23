@@ -1,0 +1,7 @@
+name = "MSTM"
+uuid = "ab8c4cbd-5680-4d25-9061-3c58eccb0437"
+authors = ["Gabriel Wu <qqbbnease1004@126.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.5"
