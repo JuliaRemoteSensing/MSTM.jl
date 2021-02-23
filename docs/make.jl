@@ -20,4 +20,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/JuliaRemoteSensing/MSTM.jl",
+    devbranch = "main",
 )
