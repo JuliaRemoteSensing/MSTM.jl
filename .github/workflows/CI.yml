@@ -16,6 +16,9 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
+    env:
+      FC: gfortran-${{ matrix.gcc_v }}
+      GCC_V: ${{ matrix.gcc_v }}
     steps:
       - uses: actions/checkout@v2
       - name: Install GFortran Linux
