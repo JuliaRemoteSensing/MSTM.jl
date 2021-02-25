@@ -21,7 +21,8 @@ function vwh_coef(mstm, notd::Int64)
     vwh_coef_addr = convert(Ptr{Float64}, unsafe_load(vwh_coef_addr_ptr))
     vwh_coef = unsafe_wrap(Array{Float64}, vwh_coef_addr, ((2notd + 1) * notd * 3 * 3,))
 
-    # Exclude outliners
+    # FIXME: Exclude outliners as a temporary workaround
+    # Need to figure out why there are these strange values
     for idx in eachindex(vwh_coef)
         if abs(vwh_coef[idx]) < 1e-20 || abs(vwh_coef[idx] > 1e20)
             vwh_coef[idx] = 0
