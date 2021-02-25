@@ -13,7 +13,7 @@ jobs:
           - '1.5'
         gcc_v: [9]
         os:
-          - ubuntu-latest
+          - ubuntu-20.04
         arch:
           - x64
     env:
