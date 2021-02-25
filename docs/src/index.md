@@ -10,3 +10,7 @@ CurrentModule = MSTM
 ```@autodocs
 Modules = [MSTM]
 ```
+
+```@docs
+SpecialFunctions.ricbessel
+```
