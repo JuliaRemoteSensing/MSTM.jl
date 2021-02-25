@@ -3,7 +3,7 @@ using Test
 using Libdl
 
 @testset "MSTM" begin
-    mstm_lib = ("CI" => "true") in ENV ? "/home/runner/work/MSTM.jl/shared/mstm" : "../shared/mstm"
+    mstm_lib = ("CI" => "true") in ENV ? "/home/runner/work/MSTM.jl/MSTM.jl/shared/mstm" : "../shared/mstm"
     mstm = Libdl.dlopen(mstm_lib)
 
     @testset "Constants" begin
