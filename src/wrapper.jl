@@ -5,7 +5,9 @@ using OffsetArrays
 # Constants <=> numconstants
 
 function init!(mstm, notd::Int64)
-    return ccall(Libdl.dlsym(mstm, :__numconstants_MOD_init), Cvoid, (Ref{Int64},), notd)
+    ccall(Libdl.dlsym(mstm, :__numconstants_MOD_init), Cvoid, (Ref{Int64},), notd)
+
+    return
 end
 
 function bcof(mstm, notd::Int64)
@@ -102,6 +104,23 @@ function cspherebessel(mstm, n::Int64, z::ComplexF64)
         csy,
     )
     return OffsetArray(csj, 0:n), OffsetArray(csy, 0:n)
+end
+
+function vcfunc(mstm, m::Int64, n::Int64, k::Int64, l::Int64)
+    init!(mstm, n + l)
+
+    vcn = zeros(n + l + 1)
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_vcfunc),
+        Cvoid,
+        (Ref{Int64}, Ref{Int64}, Ref{Int64}, Ref{Int64}, Ptr{Float64}),
+        m,
+        n,
+        k,
+        l,
+        vcn
+    )
+    return OffsetArray(vcn, 0:n + l)
 end
 
 end

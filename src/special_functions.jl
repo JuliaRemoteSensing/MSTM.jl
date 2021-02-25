@@ -1,5 +1,6 @@
 module SpecialFunctions
 using OffsetArrays
+using MSTM.Constants
 
 export ricbessel
 
@@ -250,6 +251,96 @@ end
 function envj(n::Int64, x::Float64)
     n = max(1, abs(n))
     0.5log10(6.28n) - n * log10(1.36 * x / n)
+end
+
+function vcfunc(m::Int64, n::Int64, k::Int64, l::Int64)
+    init!(n + l)
+
+    vcn = OffsetArray(zeros(n + l + 1), 0:n + l)
+    wmax = n + l
+    wmin = max(abs(n - l), abs(m + k))
+    vcn[wmax] = bcof[n + m,l + k] * bcof[n - m,l - k] / bcof[n + n,l + l]
+    if wmin == wmax
+        return vcn
+    end
+    vcn[wmax - 1] = vcn[wmax] * (l * m - k * n) * fnr[2(l + n) - 1] / fnr[l] / fnr[n] / fnr[n + l + m + k] / fnr[n + l - m - k]
+    if wmin == wmax - 1
+        return vcn
+    end
+    mk = m + k
+    vcmax = abs(vcn[wmax]) + abs(vcn[wmax - 1])
+
+    # a downwards recurrence is used initially  
+    for w in wmax:-1:wmin + 2
+        t1 = 2w * fnr[2w + 1] * fnr[2w - 1] / (fnr[w + mk] * fnr[w - mk] * fnr[n - l + w] * fnr[l - n + w] * fnr[n + l - w + 1] * fnr[n + l + w + 1])
+        t2 = ((m - k) * w * (w - 1) - mk * n * (n + 1) + mk * l * (l + 1)) / (2w * (w - 1))
+        t3 = fnr[w - mk - 1] * fnr[w + mk - 1] * fnr[l - n + w - 1] * fnr[n - l + w - 1] * fnr[n + l - w + 2] * fnr[n + l + w] / ((2(w - 1)) * fnr[2w - 3] * fnr[2w - 1])
+        vcn[w - 2] = (t2 * vcn[w - 1] - vcn[w] / t1) / t3
+        if (wmax - w) % 2 == 1
+            vctest = abs(vcn[w - 2]) + abs(vcn[w - 1])
+            vcmax = max(vcmax, vctest)
+            rat = vctest / vcmax
+            # if/when the coefficients start to decrease in magnitude, an upwards recurrence takes over
+            if rat < 0.01 &&  w - 2 > wmin
+                wmax = w - 3
+                vcfuncuprec(m, n, k, l, wmax, vcn)
+                break
+            end
+        end
+    end
+
+    return vcn
+end
+
+function vcfuncuprec(m::Int64, n::Int64, k::Int64, l::Int64, wmax::Int64, vcn::OffsetArray{Float64,1})
+    mk = abs(m + k)
+    nl = abs(n - l)
+    if nl >= mk
+        w = nl
+        if n >= l
+            m1 = m
+            n1 = n
+            l1 = l
+            k1 = k
+        else
+            m1 = k
+            n1 = l
+            k1 = m
+            l1 = n
+        end
+        vc1 = (-1)^(k1 + l1) * bcof[l1 + k1,w - m1 - k1] * bcof[l1 - k1,w + m1 + k1] / bcof[2l1, 2w + 1]
+    else
+        w = mk
+        if m + k >= 0
+            vc1 = (-1)^(n + m) * bcof[n - l + w,l - k] * bcof[l - n + w,n - m] / bcof[2w + 1,n + l - w]
+        else
+            vc1 = (-1)^(l + k) * bcof[n - l + w,l + k] * bcof[l - n + w,n + m] / bcof[2w + 1,n + l - w]
+        end
+    end
+    
+    w1 = w
+    vcn[w] = vc1
+    w = w1 + 1
+    mk = m + k
+    w2 = min(wmax, n + l)
+    if w2 > w1
+        t1 = 2 * w * fnr[2w + 1] * fnr[2w - 1] / (fnr[w + mk] * fnr[w - mk] * fnr[n - l + w] * fnr[l - n + w] * fnr[n + l - w + 1] * fnr[n + l + w + 1])
+        if w1 == 0
+            t2 = .5 * (m - k)
+        else
+            t2 = ((m - k) * w * (w - 1) - mk * n * (n + 1) + mk * l * (l + 1)) / (2w * (w - 1))
+        end
+        vcn[w] = t1 * t2 * vcn[w1]
+    end
+         
+    for w in w1 + 2:w2
+        t1 = 2w * fnr[2w + 1] * fnr[2w - 1] / (fnr[w + mk] * fnr[w - mk] * fnr[n - l + w] * fnr[l - n + w] * fnr[n + l - w + 1] * fnr[n + l + w + 1])
+        t2 = ((m - k) * w * (w - 1) - mk * n * (n + 1) + mk * l * (l + 1)) / (2w * (w - 1))
+        t3 = fnr[w - mk - 1] * fnr[w + mk - 1] * fnr[l - n + w - 1] * fnr[n - l + w - 1] * fnr[n + l - w + 2] * fnr[n + l + w] / ((2 * (w - 1)) * fnr[2w - 3] * fnr[2w - 1])
+        vcn[w] = t1 * (t2 * vcn[w - 1] - t3 * vcn[w - 2])
+    end
+
+    return
 end
 
 end # module SpecialFunctions

@@ -84,6 +84,16 @@ using Libdl
                 isapprox(csj_julia, csj_fortran) && isapprox(csy_julia, csy_fortran)   
             end
         end
+
+        @testset "vcfunc()" for (m, n, k, l) in [
+            (3, 4, 3, 10),
+            (30, 40, 30, 100),
+            (-4, 10, 4, 5),
+        ]
+            vcfunc_julia = MSTM.SpecialFunctions.vcfunc(m, n, k, l)
+            vcfunc_fortran = MSTM.Wrapper.vcfunc(mstm, m, n, k, l)
+            isapprox(vcfunc_julia, vcfunc_fortran)
+        end
     end
 
     Libdl.dlclose(mstm)
