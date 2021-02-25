@@ -3,7 +3,8 @@ using Test
 using Libdl
 
 @testset "MSTM" begin
-    mstm = Libdl.dlopen("../shared/mstm")
+    mstm_lib = ("CI" => "true") in ENV ? "mstm" : "../shared/mstm"
+    mstm = Libdl.dlopen(mstm_lib)
 
     @testset "Constants" begin
         @testset "init!($notd)" for notd in [5, 10, 20, 50, 100]
