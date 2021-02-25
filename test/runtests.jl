@@ -3,7 +3,14 @@ using Test
 using Libdl
 
 @testset "MSTM" begin
-    mstm = Libdl.dlopen("../shared/mstm")
+    mstm_lib_name = if Sys.islinux()
+        "mstm.so"
+    elseif Sys.iswindows()
+        "mstm.dll"
+    else
+        "mstm.dylib"
+    end
+    mstm = Libdl.dlopen("../shared/$mstm_lib_name")
 
     @testset "Constants" begin
         @testset "init!($notd)" for notd in [5, 10, 20, 50, 100]
