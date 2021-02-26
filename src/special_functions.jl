@@ -458,7 +458,7 @@ function taufunc(ctx::ConstantContext, cb::Float64, nmax::Int64)
             mn = nn1 + m
             τ[m, n, 1] = -fnm * (-drot[-1, mn] + drot[1, mn])
             τ[m, n, 2] = -fnm * (drot[-1, mn] + drot[1, mn])
-        end
+end
     end
     return τ  
 end
@@ -491,11 +491,59 @@ function pifunc(ctx::ConstantContext, cb::Float64, ephi::ComplexF64, nmax::Int64
         nn1 = n * (n + 1)
         π_vec[n + 1, n:-1:1, 1] = cin .* drot[1, nn1 - n:nn1 - 1] .* ephim[-n:-1]
         π_vec[n + 1, n:-1:1, 2] = cin .* drot[-1, nn1 - n:nn1 - 1] .* ephim[-n:-1]
-        π_vec[0:n, n, 1] = cin .* drot[1, nn1:nn1+n] .* ephim[0:n]
-        π_vec[0:n, n, 2] = cin .* drot[-1, nn1:nn1+n] .* ephim[0:n]
+        π_vec[0:n, n, 1] = cin .* drot[1, nn1:nn1 + n] .* ephim[0:n]
+        π_vec[0:n, n, 2] = cin .* drot[-1, nn1:nn1 + n] .* ephim[0:n]
     end
 
     return π_vec
+end
+
+function planewavecoef(ctx::ConstantContext, α::Float64, β::Float64, nodr::Int64)
+    init!(ctx, nodr)
+
+    _, _, monen, _ = get_offset_constants(ctx)
+    ci = 1.0im
+
+    τ_lr = OffsetArray(zeros(nodr + 2, nodr, 2), 0:nodr + 1, 1:nodr, 1:2)
+    pmnp0 = OffsetArray(zeros(ComplexF64, nodr + 2, nodr, 2, 2), 0:nodr + 1, 1:nodr, 1:2, 1:2)
+
+    cb = cos(β)
+    sb = sqrt((1 - cb) * (1 + cb))
+    ca = cos(α)
+    sa = sin(α)
+    E_α = ComplexF64(ca, sa)
+    τ = taufunc(ctx, cb, nodr)
+    τ_lr[:, :, 1] = (τ[:, :, 1] .+ τ[:, :, 2]) * 0.5
+    τ_lr[:, :, 2] = (τ[:, :, 1] .- τ[:, :, 2]) * 0.5
+    E_αm = ephicoef(E_α, nodr)
+
+    for n in 1:nodr
+        cin = 4 * ci^(n + 1)
+        for p in 1:2
+            sp = -monen[p]
+            for m in -n:-1
+                pmnp0[n + 1, -m, p, 1] = -cin * τ_lr[n + 1, -m, p] * E_αm[-m]
+                pmnp0[n + 1, -m, p, 2] = sp * ci * cin * τ_lr[n + 1, -m, p] * E_αm[-m]
+            end
+
+            for m in 0:n
+                pmnp0[m,n,p,1] = -cin * τ_lr[m,n,p] * E_αm[-m]
+                pmnp0[m,n,p,2] = sp * ci * cin * τ_lr[m, n, p] * E_αm[-m]
+            end
+        end
+    end
+
+    return pmnp0
+end
+
+function ephicoef(E_ϕ::ComplexF64, nodr::Int64)
+    E_ϕm = OffsetArray(zeros(ComplexF64, 2nodr + 1), -nodr:nodr)
+    E_ϕm[0] = 1.0
+    for m in 1:nodr
+        E_ϕm[m] = E_ϕ * E_ϕm[m - 1]
+        E_ϕm[-m] = conj(E_ϕm[m])
+    end
+    return E_ϕm
 end
 
 end # module SpecialFunctions

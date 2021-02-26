@@ -136,15 +136,28 @@ using Libdl
         end
 
         @testset "pifunc($cb, $ephi, $nmax, $ndim)" for (cb, ephi, nmax, ndim) in [
-            (0.5, 1+1.0im, 10, 10),
-            (-0.21, 0.2-0.3im, 14, 20),
-            (0.98, -1.2+2.5im, 15, 15),
+            (0.5, 1 + 1.0im, 10, 10),
+            (-0.21, 0.2 - 0.3im, 14, 20),
+            (0.98, -1.2 + 2.5im, 15, 15),
         ]
             @test begin
                 ctx = MSTM.Constants.init()
                 π_julia = MSTM.SpecialFunctions.pifunc(ctx, cb, ephi, nmax, ndim)
                 π_fortran = MSTM.Wrapper.pifunc(mstm, cb, ephi, nmax, ndim)
                 isapprox(π_julia, π_fortran)
+            end
+        end
+
+        @testset "planewavecoef($α, $β, $nodr)" for (α, β, nodr) in [
+            (0.5, 0.6, 10),
+            (-0.21, -0.45, 14),
+            (0.98, -0.45, 20),
+        ]
+            @test begin
+                ctx = MSTM.Constants.init()
+                pmnp0_julia = MSTM.SpecialFunctions.planewavecoef(ctx, α, β, nodr)
+                pmnp0_fortran = MSTM.Wrapper.planewavecoef(mstm, α, β, nodr)
+                isapprox(pmnp0_julia, pmnp0_fortran)
             end
         end
     end
