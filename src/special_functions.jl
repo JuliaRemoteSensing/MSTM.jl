@@ -458,7 +458,7 @@ function taufunc(ctx::ConstantContext, cb::Float64, nmax::Int64)
             mn = nn1 + m
             τ[m, n, 1] = -fnm * (-drot[-1, mn] + drot[1, mn])
             τ[m, n, 2] = -fnm * (drot[-1, mn] + drot[1, mn])
-end
+        end
     end
     return τ  
 end
@@ -489,10 +489,15 @@ function pifunc(ctx::ConstantContext, cb::Float64, ephi::ComplexF64, nmax::Int64
     for n in 1:nmax
         cin = (-1im)^(n) * fnr[2n + 1]
         nn1 = n * (n + 1)
-        π_vec[n + 1, n:-1:1, 1] = cin .* drot[1, nn1 - n:nn1 - 1] .* ephim[-n:-1]
-        π_vec[n + 1, n:-1:1, 2] = cin .* drot[-1, nn1 - n:nn1 - 1] .* ephim[-n:-1]
-        π_vec[0:n, n, 1] = cin .* drot[1, nn1:nn1 + n] .* ephim[0:n]
-        π_vec[0:n, n, 2] = cin .* drot[-1, nn1:nn1 + n] .* ephim[0:n]
+        for m in n:-1:1
+            π_vec[n + 1, m, 1] = cin * drot[1, nn1 - m] * ephim[-m]
+            π_vec[n + 1, m, 2] = cin * drot[-1, nn1 - m] * ephim[-m]
+        end
+
+        for m in 0:n
+            π_vec[m, n, 1] = cin * drot[1, nn1 + m] * ephim[m]
+            π_vec[m, n, 2] = cin * drot[-1, nn1 + m] * ephim[m]
+        end
     end
 
     return π_vec
@@ -547,8 +552,17 @@ function gaussianbeamcoef(ctx::ConstantContext, α::Float64, β::Float64, cbeam:
     pmnp0 = planewavecoef(ctx, α, β, nodr)
     for n in 1:nodr
         gbn = exp(-((n + 0.5) * cbeam)^2)
-        pmnp0[n + 1, 1:n, :, :] .*= gbn
-        pmnp0[0:n, n, :, :] .*= gbn
+        for p in 1:2
+            for k in 1:2
+                for m in -n:-1
+                    pmnp0[n + 1, -m, p, k] *= gbn
+                end
+
+                for m in 0:n
+                    pmnp0[m, n, p, k] *= gbn
+                end
+            end
+        end
     end
     return pmnp0
 end
