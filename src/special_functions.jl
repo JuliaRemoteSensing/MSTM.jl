@@ -536,12 +536,29 @@ function planewavecoef(ctx::ConstantContext, α::Float64, β::Float64, nodr::Int
     return pmnp0
 end
 
+"""
+    gaussianbeamcoef(ctx, α, β, cbeam, nodr)
+
+Regular VSWF expansion coefficients for a gaussian beam, localized approximation.
+
+cbeam = 1/(k omega) 
+"""
+function gaussianbeamcoef(ctx::ConstantContext, α::Float64, β::Float64, cbeam::Float64, nodr::Int64)
+    pmnp0 = planewavecoef(ctx, α, β, nodr)
+    for n in 1:nodr
+        gbn = exp(-((n + 0.5) * cbeam)^2)
+        pmnp0[n + 1, 1:n, :, :] .*= gbn
+        pmnp0[0:n, n, :, :] .*= gbn
+    end
+    return pmnp0
+end
+
 function ephicoef(E_ϕ::ComplexF64, nodr::Int64)
     E_ϕm = OffsetArray(zeros(ComplexF64, 2nodr + 1), -nodr:nodr)
     E_ϕm[0] = 1.0
     for m in 1:nodr
         E_ϕm[m] = E_ϕ * E_ϕm[m - 1]
-        E_ϕm[-m] = conj(E_ϕm[m])
+    E_ϕm[-m] = conj(E_ϕm[m])
     end
     return E_ϕm
 end

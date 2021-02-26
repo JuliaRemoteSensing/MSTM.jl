@@ -201,4 +201,19 @@ function planewavecoef(mstm, α::Float64, β::Float64, nodr::Int64)
     return OffsetArray(pmnp0, 0:nodr + 1, 1:nodr, 1:2, 1:2)
 end
 
+function gaussianbeamcoef(mstm, α::Float64, β::Float64, cbeam::Float64, nodr::Int64)
+    pmnp0 = zeros(ComplexF64, nodr + 2, nodr, 2, 2)
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_gaussianbeamcoef),
+        Cvoid,
+        (Ref{Float64}, Ref{Float64}, Ref{Float64}, Ref{Int64}, Ptr{ComplexF64}),
+        α,
+        β,
+        cbeam,
+        nodr,
+        pmnp0
+    )
+    return OffsetArray(pmnp0, 0:nodr + 1, 1:nodr, 1:2, 1:2)
 end
+
+end # module Wrapper

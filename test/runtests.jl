@@ -160,6 +160,19 @@ using Libdl
                 isapprox(pmnp0_julia, pmnp0_fortran)
             end
         end
+
+        @testset "gaussianbeamcoef($α, $β, $cbeam, $nodr)" for (α, β, cbeam, nodr) in [
+            (0.5, 0.6, 15.0, 10),
+            (-0.21, -0.45, 0.5, 14),
+            (0.98, -0.45, 100.0, 20),
+        ]
+            @test begin
+                ctx = MSTM.Constants.init()
+                pmnp0_julia = MSTM.SpecialFunctions.gaussianbeamcoef(ctx, α, β, cbeam, nodr)
+                pmnp0_fortran = MSTM.Wrapper.gaussianbeamcoef(mstm, α, β, cbeam, nodr)
+                isapprox(pmnp0_julia, pmnp0_fortran)
+            end
+        end
     end
 
     Libdl.dlclose(mstm)
