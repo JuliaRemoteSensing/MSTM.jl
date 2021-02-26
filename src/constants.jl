@@ -4,16 +4,16 @@ using OffsetArrays
 export ctx, get_offset_constants, init!, reset!, ConstantContext
 mutable struct ConstantContext
     nmax::Int64
-    bcof::Array{Float64, 2}
-    fnr::Array{Float64, 1}
-    monen::Array{Int64, 1}
-    vwh_coef::Array{Float64, 4}
+    bcof::Array{Float64,2}
+    fnr::Array{Float64,1}
+    monen::Array{Int64,1}
+    vwh_coef::Array{Float64,4}
 end
 
 function get_offset_constants(ctx::ConstantContext)
     notd = ctx.nmax
     nbc = 6notd + 6
-    monen = OffsetArray(ctx.monen, 0:(2notd))
+    monen = OffsetArray(ctx.monen, -2notd:(2notd))
     bcof = OffsetArray(ctx.bcof, 0:nbc, 0:nbc)
     fnr = OffsetArray(ctx.fnr, 0:(2nbc))
     vwh_coef = OffsetArray(ctx.vwh_coef, (-notd):notd, 1:notd, -1:1, -1:1)
@@ -46,11 +46,12 @@ function init!(ctx::ConstantContext, notd)
     end
     ctx.nmax = notd
     nbc = 6notd + 6
-    monen = OffsetArray(zeros(Int64, 2notd + 1), 0:(2notd))
+    monen = OffsetArray(zeros(Int64, 4notd + 1), -2notd:(2notd))
     bcof = OffsetArray(zeros(nbc + 1, nbc + 1), 0:nbc, 0:nbc)
     fnr = OffsetArray(zeros(2nbc + 1), 0:(2nbc))
-    for n in 0:(2notd)
-        monen[n] = n & 1 == 1 ? -1 : 1
+    monen[-2notd] = 1
+    for n in -2notd + 1:(2notd)
+        monen[n] = -monen[n - 1]
     end
     for n in 0:(2nbc)
         fnr[n] = √n

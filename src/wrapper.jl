@@ -139,4 +139,20 @@ function normalizedlegendre(mstm, cbe::Float64, mmax::Int64, nmax::Int64)
     return OffsetArray(dc, -mmax:mmax, 0:nmax)
 end
 
+function rotcoef(mstm, cbe::Float64, kmax::Int64, nmax::Int64)
+    init!(mstm, kmax + nmax)
+
+    dc = zeros(2kmax + 1, nmax * (nmax + 2) + 1)
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_rotcoef),
+        Cvoid,
+        (Ref{Float64}, Ref{Int64}, Ref{Int64}, Ptr{Float64}),
+        cbe,
+        kmax,
+        nmax,
+        dc
+    )
+    return OffsetArray(dc, -kmax:kmax, 0:nmax * (nmax + 2))
+end
+
 end

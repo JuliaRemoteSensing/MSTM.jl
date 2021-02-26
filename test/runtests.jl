@@ -108,6 +108,19 @@ using Libdl
                 isapprox(dc_julia, dc_fortran)
             end
         end
+
+        @testset "rotcoef($cbe, $kmax, $nmax)" for (cbe, kmax, nmax) in [
+            (0.5, 10, 10),
+            (-0.21, 15, 20),
+            (0.98, 30, 34),
+        ]
+            @test begin
+                ctx = MSTM.Constants.init()
+                dc_julia = MSTM.SpecialFunctions.rotcoef(ctx, cbe, kmax, nmax)
+                dc_fortran = MSTM.Wrapper.rotcoef(mstm, cbe, kmax, nmax)
+                isapprox(dc_julia, dc_fortran)
+            end
+        end
     end
 
     Libdl.dlclose(mstm)

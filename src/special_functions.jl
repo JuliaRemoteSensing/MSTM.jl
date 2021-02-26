@@ -2,7 +2,7 @@ module SpecialFunctions
 using OffsetArrays
 using ..Constants
 
-export ricbessel, richankel, cricbessel, crichankel, cspherebessel, vcfunc
+export ricbessel, richankel, cricbessel, crichankel, cspherebessel, vcfunc, normalizedlegendre
 
 """
     ricbessel(n, ds, ϵ, Ψ)
@@ -300,7 +300,7 @@ end
 Upwards VC coefficient recurrence, used internally by vcfunc(ctx, m, n, k, l).
 """
 function vcfuncuprec(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int64, wmax::Int64, vcn::OffsetArray{Float64,1})
-    bcof, fnr, _, _ = get_offset_constants(ctx)
+    bcof, fnr, monen, _ = get_offset_constants(ctx)
 
     mk = abs(m + k)
     nl = abs(n - l)
@@ -317,13 +317,13 @@ function vcfuncuprec(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int6
             k1 = m
             l1 = n
         end
-        vc1 = (-1)^(k1 + l1) * bcof[l1 + k1,w - m1 - k1] * bcof[l1 - k1,w + m1 + k1] / bcof[2l1, 2w + 1]
+        vc1 = monen[k1 + l1] * bcof[l1 + k1,w - m1 - k1] * bcof[l1 - k1,w + m1 + k1] / bcof[2l1, 2w + 1]
     else
         w = mk
         if m + k >= 0
-            vc1 = (-1)^(n + m) * bcof[n - l + w,l - k] * bcof[l - n + w,n - m] / bcof[2w + 1,n + l - w]
+            vc1 = monen[n + m] * bcof[n - l + w,l - k] * bcof[l - n + w,n - m] / bcof[2w + 1,n + l - w]
         else
-            vc1 = (-1)^(l + k) * bcof[n - l + w,l + k] * bcof[l - n + w,n + m] / bcof[2w + 1,n + l - w]
+            vc1 = monen[l + k] * bcof[n - l + w,l + k] * bcof[l - n + w,n + m] / bcof[2w + 1,n + l - w]
         end
     end
     
@@ -355,13 +355,13 @@ end
 function normalizedlegendre(ctx::ConstantContext, cbe::Float64, mmax::Int64, nmax::Int64)
     init!(ctx, mmax + nmax)
 
-    bcof, fnr, _, _ = get_offset_constants(ctx)
+    bcof, fnr, monen, _ = get_offset_constants(ctx)
     dc = OffsetArray(zeros(2mmax + 1, nmax + 1), -mmax:mmax, 0:nmax)
 
     # cbe must ∈ [-1, 1] otherwise sbe will be a complex number
     sbe = sqrt((1 + cbe) * (1 - cbe))
     for m in 0:mmax
-        dc[m, m] = (-1)^m * (0.5 * sbe)^m * bcof[m,m]
+        dc[m, m] = monen[m] * (0.5 * sbe)^m * bcof[m,m]
         if m == nmax
             break
         end
@@ -372,9 +372,62 @@ function normalizedlegendre(ctx::ConstantContext, cbe::Float64, mmax::Int64, nma
     end
 
     for m in 1:mmax
-        im = (-1)^m
         for n in m:nmax
-            dc[-m, n] = im * dc[m, n]
+            dc[-m, n] = monen[m] * dc[m, n]
+        end
+    end
+
+    return dc
+end
+
+function rotcoef(ctx::ConstantContext, cbe::Float64, kmax::Int64, nmax::Int64)
+    init!(ctx, kmax + nmax)
+    bcof, fnr, monen, _ = get_offset_constants(ctx)
+
+    dc = OffsetArray(zeros(2kmax + 1, nmax * (nmax + 2) + 1), -kmax:kmax, 0:nmax * (nmax + 2))
+    dk0 = OffsetArray(zeros(2nmax + 3), -nmax - 1:nmax + 1)
+    dk01 = OffsetArray(zeros(2nmax + 3), -nmax - 1:nmax + 1)
+
+    # cbe must ∈ [-1, 1] otherwise sbe will be a complex number
+    sbe = sqrt((1 + cbe) * (1 - cbe))
+    cbe2 = 0.5(1 + cbe)
+    sbe2 = 0.5(1 - cbe)
+
+    dk0[0] = 1
+    sben = 1.0
+    dc[0, 0] = 1
+    dk01[0] = 0
+
+    for n in 1:nmax
+        knmax = min(n, kmax)
+        nn1 = n * (n + 1)
+        sben *= sbe / 2
+        dk0[n] = monen[n] * sben * bcof[n, n]
+        dk0[-n] = monen[n] * dk0[n]
+        dk01[n] = 0
+        dk01[-n] = 0
+        dc[0, nn1 + n] = dk0[n]
+        dc[0, nn1 - n] = dk0[-n]
+        for k in -n + 1:n - 1
+            kn = nn1 + k
+            dkt = dk01[k]
+            dk01[k] = dk0[k]
+            dk0[k] = (cbe * (2n - 1) * dk01[k] - fnr[n - k - 1] * fnr[n + k - 1] * dkt) / (fnr[n + k] * fnr[n - k])
+            dc[0, kn] = dk0[k]
+        end
+
+        for m in 1:knmax
+            fmn = 1 / fnr[n - m + 1] / fnr[n + m]
+            m1 = m - 1
+            dkm0 = 0.0
+            for k in -n:n
+                kn = nn1 + k
+                dkm1 = dkm0
+                dkm0 = dc[m1, kn]
+                dkn1 = k == n ? 0.0 : dc[m1, kn + 1]
+                dc[m, kn] = (fnr[n + k] * fnr[n - k + 1] * cbe2 * dkm1 - fnr[n - k] * fnr[n + k + 1] * sbe2 * dkn1 - k * sbe * dc[m1, kn]) * fmn
+                dc[-m, nn1 - k] = dc[m, kn] * monen[k + m]
+            end
         end
     end
 
