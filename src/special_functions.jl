@@ -434,4 +434,24 @@ function rotcoef(ctx::ConstantContext, cbe::Float64, kmax::Int64, nmax::Int64)
     return dc
 end
 
+function taufunc(ctx::ConstantContext, cb::Float64, nmax::Int64)
+    drot = rotcoef(ctx, cb, 1, nmax)
+    τ = OffsetArray(zeros(nmax + 2, nmax, 2), 0:nmax + 1, 1:nmax, 1:2)
+    for n in 1:nmax
+        nn1 = n * (n + 1)
+        fnm = sqrt((2n + 1) / 2) / 4
+        for m in -n:-1
+            mn = nn1 + m
+            τ[n + 1, -m, 1] = -fnm * (-drot[-1, mn] + drot[1, mn])
+            τ[n + 1, -m, 2] = -fnm * (drot[-1, mn] + drot[1, mn])
+        end
+        for m in 0:n
+            mn = nn1 + m
+            τ[m, n, 1] = -fnm * (-drot[-1, mn] + drot[1, mn])
+            τ[m, n, 2] = -fnm * (drot[-1, mn] + drot[1, mn])
+        end
+    end
+    return τ  
+end
+
 end # module SpecialFunctions

@@ -121,6 +121,19 @@ using Libdl
                 isapprox(dc_julia, dc_fortran)
             end
         end
+
+        @testset "taufunc($cb, $nmax)" for (cb, nmax) in [
+            (0.5, 10),
+            (-0.21, 20),
+            (0.98, 34),
+        ]
+            @test begin
+                ctx = MSTM.Constants.init()
+                τ_julia = MSTM.SpecialFunctions.taufunc(ctx, cb, nmax)
+                τ_fortran = MSTM.Wrapper.taufunc(mstm, cb, nmax)
+                isapprox(τ_julia, τ_fortran)
+            end
+        end
     end
 
     Libdl.dlclose(mstm)

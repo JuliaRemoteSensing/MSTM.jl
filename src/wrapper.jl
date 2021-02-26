@@ -155,4 +155,19 @@ function rotcoef(mstm, cbe::Float64, kmax::Int64, nmax::Int64)
     return OffsetArray(dc, -kmax:kmax, 0:nmax * (nmax + 2))
 end
 
+function taufunc(mstm, cb::Float64, nmax::Int64)
+    init!(mstm, nmax + 1)
+
+    τ = zeros(nmax + 2, nmax, 2)
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_taufunc),
+        Cvoid,
+        (Ref{Float64}, Ref{Int64}, Ptr{Float64}),
+        cb,
+        nmax,
+        τ
+    )
+    return OffsetArray(τ, 0:nmax + 1, 1:nmax, 1:2)
+end
+
 end
