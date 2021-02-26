@@ -83,15 +83,30 @@ using Libdl
             end
         end
 
-        @testset "vcfunc()" for (m, n, k, l) in [
+        @testset "vcfunc($m, $n, $k, $l)" for (m, n, k, l) in [
             (3, 4, 3, 10),
             (30, 40, 30, 100),
             (-4, 10, 4, 5),
         ]
-            ctx = MSTM.Constants.init()
-            vcfunc_julia = MSTM.SpecialFunctions.vcfunc(ctx, m, n, k, l)
-            vcfunc_fortran = MSTM.Wrapper.vcfunc(mstm, m, n, k, l)
-            isapprox(vcfunc_julia, vcfunc_fortran)
+            @test begin
+                ctx = MSTM.Constants.init()
+                vcn_julia = MSTM.SpecialFunctions.vcfunc(ctx, m, n, k, l)
+                vcn_fortran = MSTM.Wrapper.vcfunc(mstm, m, n, k, l)
+                isapprox(vcn_julia, vcn_fortran)
+            end
+        end
+
+        @testset "normalizedlegendre($cbe, $mmax, $nmax)" for (cbe, mmax, nmax) in [
+            (0.5, 10, 10),
+            (-0.21, 15, 20),
+            (0.98, 30, 34),
+        ]
+            @test begin
+                ctx = MSTM.Constants.init()
+                dc_julia = MSTM.SpecialFunctions.normalizedlegendre(ctx, cbe, mmax, nmax)
+                dc_fortran = MSTM.Wrapper.normalizedlegendre(mstm, cbe, mmax, nmax)
+                isapprox(dc_julia, dc_fortran)
+            end
         end
     end
 

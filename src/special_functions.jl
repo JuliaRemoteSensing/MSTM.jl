@@ -2,7 +2,7 @@ module SpecialFunctions
 using OffsetArrays
 using ..Constants
 
-export ricbessel
+export ricbessel, richankel, cricbessel, crichankel, cspherebessel, vcfunc
 
 """
     ricbessel(n, ds, ϵ, Ψ)
@@ -256,7 +256,7 @@ end
 function vcfunc(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int64)
     init!(ctx, n + l)
 
-    bcof, fnr, monen, vwh_coef = get_offset_constants(ctx)
+    bcof, fnr, _, _ = get_offset_constants(ctx)
 
     vcn = OffsetArray(zeros(n + l + 1), 0:n + l)
     wmax = n + l
@@ -294,8 +294,13 @@ function vcfunc(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int64)
     return vcn
 end
 
+"""
+    vcfuncuprec(ctx, m, n, k, l, wmax, vcn)
+
+Upwards VC coefficient recurrence, used internally by vcfunc(ctx, m, n, k, l).
+"""
 function vcfuncuprec(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int64, wmax::Int64, vcn::OffsetArray{Float64,1})
-    bcof, fnr, monen, vwh_coef = get_offset_constants(ctx)
+    bcof, fnr, _, _ = get_offset_constants(ctx)
 
     mk = abs(m + k)
     nl = abs(n - l)
@@ -345,6 +350,35 @@ function vcfuncuprec(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int6
     end
 
     return
+end
+
+function normalizedlegendre(ctx::ConstantContext, cbe::Float64, mmax::Int64, nmax::Int64)
+    init!(ctx, mmax + nmax)
+
+    bcof, fnr, _, _ = get_offset_constants(ctx)
+    dc = OffsetArray(zeros(2mmax + 1, nmax + 1), -mmax:mmax, 0:nmax)
+
+    # cbe must ∈ [-1, 1] otherwise sbe will be a complex number
+    sbe = sqrt((1 + cbe) * (1 - cbe))
+    for m in 0:mmax
+        dc[m, m] = (-1)^m * (0.5 * sbe)^m * bcof[m,m]
+        if m == nmax
+            break
+        end
+        dc[m, m + 1] = fnr[2m + 1] * cbe * dc[m, m]
+        for n in m + 1:nmax - 1
+            dc[m, n + 1] = (-fnr[n - m] * fnr[n + m] * dc[m, n - 1] + (2n + 1) * cbe * dc[m, n]) / (fnr[n + 1 - m] * fnr[n + 1 + m])
+        end
+    end
+
+    for m in 1:mmax
+        im = (-1)^m
+        for n in m:nmax
+            dc[-m, n] = im * dc[m, n]
+        end
+    end
+
+    return dc
 end
 
 end # module SpecialFunctions

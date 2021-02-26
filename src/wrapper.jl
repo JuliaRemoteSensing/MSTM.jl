@@ -123,4 +123,20 @@ function vcfunc(mstm, m::Int64, n::Int64, k::Int64, l::Int64)
     return OffsetArray(vcn, 0:n + l)
 end
 
+function normalizedlegendre(mstm, cbe::Float64, mmax::Int64, nmax::Int64)
+    init!(mstm, mmax + nmax)
+
+    dc = zeros(2mmax + 1, nmax + 1)
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_normalizedlegendre),
+        Cvoid,
+        (Ref{Float64}, Ref{Int64}, Ref{Int64}, Ptr{Float64}),
+        cbe,
+        mmax,
+        nmax,
+        dc
+    )
+    return OffsetArray(dc, -mmax:mmax, 0:nmax)
+end
+
 end
