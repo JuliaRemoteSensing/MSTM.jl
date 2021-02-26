@@ -6,20 +6,20 @@ using Libdl
     mstm_lib = ("CI" => "true") in ENV ? "/home/runner/work/MSTM.jl/MSTM.jl/shared/mstm" : "../shared/mstm"
     mstm = Libdl.dlopen(mstm_lib)
 
-    @testset "Constants" begin
-        @testset "init!($notd)" for notd in [5, 10, 20, 50, 100]
-            @test begin
-                ctx = MSTM.Constants.init(notd)
-                bcof_julia, _, _, vwh_coef_julia = MSTM.Constants.get_offset_constants(ctx)
+    # @testset "Constants" begin
+    #     @testset "init!($notd)" for notd in [5, 10, 20, 50, 100]
+    #         @test begin
+    #             ctx = MSTM.Constants.init(notd)
+    #             bcof_julia, _, _, vwh_coef_julia = MSTM.Constants.get_offset_constants(ctx)
 
-                MSTM.Wrapper.init!(mstm, notd)
-                bcof_fortran = MSTM.Wrapper.bcof(mstm, notd)
-                vwh_coef_fortran = MSTM.Wrapper.vwh_coef(mstm, notd)
+    #             MSTM.Wrapper.init!(mstm, notd)
+    #             bcof_fortran = MSTM.Wrapper.bcof(mstm, notd)
+    #             vwh_coef_fortran = MSTM.Wrapper.vwh_coef(mstm, notd)
 
-                isapprox(bcof_julia, bcof_fortran) && isapprox(vwh_coef_julia, vwh_coef_fortran)
-            end
-        end
-    end
+    #             isapprox(bcof_julia, bcof_fortran) && isapprox(vwh_coef_julia, vwh_coef_fortran)
+    #         end
+    #     end
+    # end
 
     @testset "SpecialFunctions" begin
         ϵ = 1e-8
