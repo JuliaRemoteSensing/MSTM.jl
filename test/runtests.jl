@@ -9,16 +9,14 @@ using Libdl
     @testset "Constants" begin
         @testset "init!($notd)" for notd in [5, 10, 20, 50, 100]
             @test begin
-                notd = 10
-                MSTM.Constants.init!(notd)
-                bcof_julia = MSTM.Constants.bcof
-                vwh_coef_julia = MSTM.Constants.vwh_coef
+                ctx = MSTM.Constants.init(notd)
+                bcof_julia, _, _, vwh_coef_julia = MSTM.Constants.get_offset_constants(ctx)
 
                 MSTM.Wrapper.init!(mstm, notd)
                 bcof_fortran = MSTM.Wrapper.bcof(mstm, notd)
                 vwh_coef_fortran = MSTM.Wrapper.vwh_coef(mstm, notd)
 
-                bcof_julia == bcof_fortran && vwh_coef_julia == vwh_coef_fortran
+                isapprox(bcof_julia, bcof_fortran) && isapprox(vwh_coef_julia, vwh_coef_fortran)
             end
         end
     end
@@ -90,7 +88,8 @@ using Libdl
             (30, 40, 30, 100),
             (-4, 10, 4, 5),
         ]
-            vcfunc_julia = MSTM.SpecialFunctions.vcfunc(m, n, k, l)
+            ctx = MSTM.Constants.init()
+            vcfunc_julia = MSTM.SpecialFunctions.vcfunc(ctx, m, n, k, l)
             vcfunc_fortran = MSTM.Wrapper.vcfunc(mstm, m, n, k, l)
             isapprox(vcfunc_julia, vcfunc_fortran)
         end

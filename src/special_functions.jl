@@ -1,6 +1,6 @@
 module SpecialFunctions
 using OffsetArrays
-using MSTM.Constants
+using ..Constants
 
 export ricbessel
 
@@ -253,8 +253,10 @@ function envj(n::Int64, x::Float64)
     0.5log10(6.28n) - n * log10(1.36 * x / n)
 end
 
-function vcfunc(m::Int64, n::Int64, k::Int64, l::Int64)
-    init!(n + l)
+function vcfunc(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int64)
+    init!(ctx, n + l)
+
+    bcof, fnr, monen, vwh_coef = get_offset_constants(ctx)
 
     vcn = OffsetArray(zeros(n + l + 1), 0:n + l)
     wmax = n + l
@@ -272,9 +274,9 @@ function vcfunc(m::Int64, n::Int64, k::Int64, l::Int64)
 
     # a downwards recurrence is used initially  
     for w in wmax:-1:wmin + 2
-        t1 = 2w * fnr[2w + 1] * fnr[2w - 1] / (fnr[w + mk] * fnr[w - mk] * fnr[n - l + w] * fnr[l - n + w] * fnr[n + l - w + 1] * fnr[n + l + w + 1])
+        t1::Float64 = 2w * fnr[2w + 1] * fnr[2w - 1] / (fnr[w + mk] * fnr[w - mk] * fnr[n - l + w] * fnr[l - n + w] * fnr[n + l - w + 1] * fnr[n + l + w + 1])
         t2 = ((m - k) * w * (w - 1) - mk * n * (n + 1) + mk * l * (l + 1)) / (2w * (w - 1))
-        t3 = fnr[w - mk - 1] * fnr[w + mk - 1] * fnr[l - n + w - 1] * fnr[n - l + w - 1] * fnr[n + l - w + 2] * fnr[n + l + w] / ((2(w - 1)) * fnr[2w - 3] * fnr[2w - 1])
+        t3::Float64 = fnr[w - mk - 1] * fnr[w + mk - 1] * fnr[l - n + w - 1] * fnr[n - l + w - 1] * fnr[n + l - w + 2] * fnr[n + l + w] / ((2(w - 1)) * fnr[2w - 3] * fnr[2w - 1])
         vcn[w - 2] = (t2 * vcn[w - 1] - vcn[w] / t1) / t3
         if (wmax - w) % 2 == 1
             vctest = abs(vcn[w - 2]) + abs(vcn[w - 1])
@@ -283,7 +285,7 @@ function vcfunc(m::Int64, n::Int64, k::Int64, l::Int64)
             # if/when the coefficients start to decrease in magnitude, an upwards recurrence takes over
             if rat < 0.01 &&  w - 2 > wmin
                 wmax = w - 3
-                vcfuncuprec(m, n, k, l, wmax, vcn)
+                vcfuncuprec(ctx, m, n, k, l, wmax, vcn)
                 break
             end
         end
@@ -292,7 +294,9 @@ function vcfunc(m::Int64, n::Int64, k::Int64, l::Int64)
     return vcn
 end
 
-function vcfuncuprec(m::Int64, n::Int64, k::Int64, l::Int64, wmax::Int64, vcn::OffsetArray{Float64,1})
+function vcfuncuprec(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int64, wmax::Int64, vcn::OffsetArray{Float64,1})
+    bcof, fnr, monen, vwh_coef = get_offset_constants(ctx)
+
     mk = abs(m + k)
     nl = abs(n - l)
     if nl >= mk
