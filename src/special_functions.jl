@@ -408,6 +408,7 @@ function rotcoef(ctx::ConstantContext, cbe::Float64, kmax::Int64, nmax::Int64)
         dk01[-n] = 0
         dc[0, nn1 + n] = dk0[n]
         dc[0, nn1 - n] = dk0[-n]
+
         for k in -n + 1:n - 1
             kn = nn1 + k
             dkt = dk01[k]
@@ -420,6 +421,7 @@ function rotcoef(ctx::ConstantContext, cbe::Float64, kmax::Int64, nmax::Int64)
             fmn = 1 / fnr[n - m + 1] / fnr[n + m]
             m1 = m - 1
             dkm0 = 0.0
+
             for k in -n:n
                 kn = nn1 + k
                 dkm1 = dkm0
@@ -434,17 +436,24 @@ function rotcoef(ctx::ConstantContext, cbe::Float64, kmax::Int64, nmax::Int64)
     return dc
 end
 
+"""
+    taufunc(ctx, cb, nmax)
+
+Normalized vector spherical harmonic function.
+"""
 function taufunc(ctx::ConstantContext, cb::Float64, nmax::Int64)
     drot = rotcoef(ctx, cb, 1, nmax)
     τ = OffsetArray(zeros(nmax + 2, nmax, 2), 0:nmax + 1, 1:nmax, 1:2)
     for n in 1:nmax
         nn1 = n * (n + 1)
         fnm = sqrt((2n + 1) / 2) / 4
+
         for m in -n:-1
             mn = nn1 + m
             τ[n + 1, -m, 1] = -fnm * (-drot[-1, mn] + drot[1, mn])
             τ[n + 1, -m, 2] = -fnm * (drot[-1, mn] + drot[1, mn])
         end
+
         for m in 0:n
             mn = nn1 + m
             τ[m, n, 1] = -fnm * (-drot[-1, mn] + drot[1, mn])
@@ -452,6 +461,41 @@ function taufunc(ctx::ConstantContext, cb::Float64, nmax::Int64)
         end
     end
     return τ  
+end
+
+"""
+    pifunc(cb, ephi, nmax, ndim)
+
+Vector spherical harmonic function.
+
+TODO: `ndim` seems to be useless. Can it be safely deleted?
+"""
+function pifunc(ctx::ConstantContext, cb::Float64, ephi::ComplexF64, nmax::Int64, ndim::Int64)
+    drot = rotcoef(ctx, cb, 1, nmax)
+
+    _, fnr, _, _ = get_offset_constants(ctx)
+
+    ephim = OffsetArray(zeros(ComplexF64, 2nmax + 1), -nmax:nmax)
+    ephim[0] = 1.0
+
+    # ndim should be as large as or larger than nmax
+    π_vec = OffsetArray(zeros(ComplexF64, ndim + 2, ndim, 2), 0:ndim + 1, 1:ndim, 1:2)
+
+    for m in 1:nmax
+        ephim[m] = ephi * ephim[m - 1]
+        ephim[-m] = conj(ephim[m])
+    end
+
+    for n in 1:nmax
+        cin = (-1im)^(n) * fnr[2n + 1]
+        nn1 = n * (n + 1)
+        π_vec[n + 1, n:-1:1, 1] = cin .* drot[1, nn1 - n:nn1 - 1] .* ephim[-n:-1]
+        π_vec[n + 1, n:-1:1, 2] = cin .* drot[-1, nn1 - n:nn1 - 1] .* ephim[-n:-1]
+        π_vec[0:n, n, 1] = cin .* drot[1, nn1:nn1+n] .* ephim[0:n]
+        π_vec[0:n, n, 2] = cin .* drot[-1, nn1:nn1+n] .* ephim[0:n]
+    end
+
+    return π_vec
 end
 
 end # module SpecialFunctions

@@ -170,4 +170,21 @@ function taufunc(mstm, cb::Float64, nmax::Int64)
     return OffsetArray(τ, 0:nmax + 1, 1:nmax, 1:2)
 end
 
+function pifunc(mstm, cb::Float64, ephi::ComplexF64, nmax::Int64, ndim::Int64)
+    init!(mstm, nmax + 1)
+
+    π_vec = zeros(ComplexF64, ndim + 2, ndim, 2)
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_pifunc),
+        Cvoid,
+        (Ref{Float64}, Ref{ComplexF64}, Ref{Int64}, Ref{Int64}, Ptr{ComplexF64}),
+        cb,
+        ephi,
+        nmax,
+        ndim,
+        π_vec
+    )
+    return OffsetArray(π_vec, 0:ndim + 1, 1:ndim, 1:2)
+end
+
 end

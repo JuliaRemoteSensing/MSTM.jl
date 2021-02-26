@@ -134,6 +134,19 @@ using Libdl
                 isapprox(τ_julia, τ_fortran)
             end
         end
+
+        @testset "pifunc($cb, $ephi, $nmax, $ndim)" for (cb, ephi, nmax, ndim) in [
+            (0.5, 1+1.0im, 10, 10),
+            (-0.21, 0.2-0.3im, 14, 20),
+            (0.98, -1.2+2.5im, 15, 15),
+        ]
+            @test begin
+                ctx = MSTM.Constants.init()
+                π_julia = MSTM.SpecialFunctions.pifunc(ctx, cb, ephi, nmax, ndim)
+                π_fortran = MSTM.Wrapper.pifunc(mstm, cb, ephi, nmax, ndim)
+                isapprox(π_julia, π_fortran)
+            end
+        end
     end
 
     Libdl.dlclose(mstm)
