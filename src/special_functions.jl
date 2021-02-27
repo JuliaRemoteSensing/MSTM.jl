@@ -250,7 +250,7 @@ end
 
 function envj(n::Int64, x::Float64)
     n = max(1, abs(n))
-    0.5log10(6.28n) - n * log10(1.36 * x / n)
+    return 0.5log10(6.28n) - n * log10(1.36 * x / n)
 end
 
 function vcfunc(ctx::ConstantContext, m::Int64, n::Int64, k::Int64, l::Int64)
@@ -359,7 +359,7 @@ function normalizedlegendre(ctx::ConstantContext, cbe::Float64, mmax::Int64, nma
     dc = OffsetArray(zeros(2mmax + 1, nmax + 1), -mmax:mmax, 0:nmax)
 
     # cbe must ∈ [-1, 1] otherwise sbe will be a complex number
-    sbe = sqrt((1 + cbe) * (1 - cbe))
+    sbe = √((1 + cbe) * (1 - cbe))
     for m in 0:mmax
         dc[m, m] = monen[m] * (0.5 * sbe)^m * bcof[m,m]
         if m == nmax
@@ -389,7 +389,7 @@ function rotcoef(ctx::ConstantContext, cbe::Float64, kmax::Int64, nmax::Int64)
     dk01 = OffsetArray(zeros(2nmax + 3), -nmax - 1:nmax + 1)
 
     # cbe must ∈ [-1, 1] otherwise sbe will be a complex number
-    sbe = sqrt((1 + cbe) * (1 - cbe))
+    sbe = √((1 + cbe) * (1 - cbe))
     cbe2 = 0.5(1 + cbe)
     sbe2 = 0.5(1 - cbe)
 
@@ -446,7 +446,7 @@ function taufunc(ctx::ConstantContext, cb::Float64, nmax::Int64)
     τ = OffsetArray(zeros(nmax + 2, nmax, 2), 0:nmax + 1, 1:nmax, 1:2)
     for n in 1:nmax
         nn1 = n * (n + 1)
-        fnm = sqrt((2n + 1) / 2) / 4
+        fnm = √((2n + 1) / 2) / 4
 
         for m in -n:-1
             mn = nn1 + m
@@ -458,7 +458,7 @@ function taufunc(ctx::ConstantContext, cb::Float64, nmax::Int64)
             mn = nn1 + m
             τ[m, n, 1] = -fnm * (-drot[-1, mn] + drot[1, mn])
             τ[m, n, 2] = -fnm * (drot[-1, mn] + drot[1, mn])
-        end
+end
     end
     return τ  
 end
@@ -513,7 +513,7 @@ function planewavecoef(ctx::ConstantContext, α::Float64, β::Float64, nodr::Int
     pmnp0 = OffsetArray(zeros(ComplexF64, nodr + 2, nodr, 2, 2), 0:nodr + 1, 1:nodr, 1:2, 1:2)
 
     cb = cos(β)
-    sb = sqrt((1 - cb) * (1 + cb))
+    sb = √((1 - cb) * (1 + cb))
     ca = cos(α)
     sa = sin(α)
     E_α = ComplexF64(ca, sa)
@@ -575,6 +575,56 @@ function ephicoef(E_ϕ::ComplexF64, nodr::Int64)
     E_ϕm[-m] = conj(E_ϕm[m])
     end
     return E_ϕm
+end
+
+"""
+    sphereplanewavecoef(ctx, nsphere, neqns, nodr, nodrmax, α, β, rpos, hostsphere, numberfieldexp, rimedium)
+
+Plane wave expansion coefficients at sphere origins. A phase shift is used.
+"""
+function sphereplanewavecoef(ctx::ConstantContext, nodr::Array{Int64,1}, α::Float64, β::Float64, rpos::Array{Float64,2}, hostsphere::Array{Int64,1}, numberfieldexp::Array{Int64,1}, rimedium::Array{ComplexF64,1})
+    nsphere = length(nodr)
+    nodrmax = maximum(nodr)
+
+    # Valid the input
+    @assert length(hostsphere) == nsphere
+    @assert length(numberfieldexp) == nsphere
+    @assert size(rpos) == (3, nsphere)
+    @assert length(rimedium) == 2
+
+    ci = 1.0im
+    rib = 2 / (1 / rimedium[1] + 1 / rimedium[2])
+    pmnp0 = planewavecoef(ctx, α, β, nodrmax)
+    cb = cos(β)
+    sb = √((1 - cb) * (1 + cb))
+    ca = cos(α)
+    sa = sin(α)
+
+    neqns = 2 * sum(numberfieldexp[i] * nodr[i] * (nodr[i] + 2) for i in 1:nsphere)
+    pmnp = zeros(ComplexF64, 2neqns)
+
+    l = 0
+    for i in 1:nsphere
+        phasefac = exp(ci * rib * ((ca * rpos[1, i] + sa * rpos[2, i]) * sb + rpos[3, i] * cb))
+        for j in 1:numberfieldexp[i]
+            for k in 1:2
+                for p in 1:2
+                    for n in 1:nodr[i]
+                        for m in 0:nodr[i] + 1
+                            l += 1
+                            if hostsphere[i] == 0 && j == 1
+                                pmnp[l] = phasefac * pmnp0[m, n, p, k]
+                            else
+                                pmnp[l] = 0
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return pmnp
 end
 
 end # module SpecialFunctions

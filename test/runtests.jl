@@ -173,6 +173,27 @@ using Libdl
                 isapprox(pmnp0_julia, pmnp0_fortran)
             end
         end
+
+        @testset "sphereplanewavecoef" begin
+            @test begin
+                ctx = MSTM.Constants.init()
+
+                nsphere = 3
+                nodr = [2, 2, 3]
+                α = 0.5
+                β = 0.5
+                rpos = [[3.2, -3.2, 1.2] [-3.4, 1.9, 1.8] [0.5, -0.3, 1.5]]
+                hostsphere = [0, 1, 0]
+                numberfieldexp = [2, 2, 3]
+                rimedium = [1.1 + 1.3im, 1.0 - 0.5im]
+
+                pmnp_julia = MSTM.SpecialFunctions.sphereplanewavecoef(ctx, nodr, α, β, rpos, hostsphere, numberfieldexp, rimedium)
+
+                pmnp_fortran = MSTM.Wrapper.sphereplanewavecoef(mstm, nodr, α, β, rpos, hostsphere, numberfieldexp, rimedium)
+                
+                isapprox(pmnp_julia, pmnp_fortran)
+            end
+        end
     end
 
     Libdl.dlclose(mstm)

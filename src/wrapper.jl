@@ -5,7 +5,7 @@ using OffsetArrays
 # Constants <=> numconstants
 
 function init!(mstm, notd::Int64)
-    ccall(Libdl.dlsym(mstm, :__numconstants_MOD_init), Cvoid, (Ref{Int64},), notd)
+    ccall(Libdl.dlsym(mstm, :__numconstants_MOD_init), Cvoid, (Ref{Int32},), convert(Int32, notd))
 
     return
 end
@@ -42,8 +42,8 @@ function ricbessel(mstm, n::Int64, ds::Float64, ϵ::Float64)
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_ricbessel),
         Cvoid,
-        (Ref{Int64}, Ref{Float64}, Ref{Float64}, Ref{Int64}, Ptr{Float64}),
-        n,
+        (Ref{Int32}, Ref{Float64}, Ref{Float64}, Ref{Int64}, Ptr{Float64}),
+        convert(Int32, n),
         ds,
         ϵ,
         0,
@@ -57,8 +57,8 @@ function richankel(mstm, n::Int64, ds::Float64)
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_richankel),
         Cvoid,
-        (Ref{Int64}, Ref{Float64}, Ptr{ComplexF64}),
-        n,
+        (Ref{Int32}, Ref{Float64}, Ptr{ComplexF64}),
+        convert(Int32, n),
         ds,
         Ξ,
     )
@@ -67,11 +67,12 @@ end
 
 function cricbessel(mstm, n::Int64, ds::ComplexF64)
     Ψ = zeros(ComplexF64, n + 1)
+
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_cricbessel),
         Cvoid,
-        (Ref{Int64}, Ref{ComplexF64}, Ptr{ComplexF64}),
-        n,
+        (Ref{Int32}, Ref{ComplexF64}, Ptr{ComplexF64}),
+        convert(Int32, n),
         ds,
         Ψ,
     )
@@ -83,8 +84,8 @@ function crichankel(mstm, n::Int64, ds::ComplexF64)
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_crichankel),
         Cvoid,
-        (Ref{Int64}, Ref{ComplexF64}, Ptr{ComplexF64}),
-        n,
+        (Ref{Int32}, Ref{ComplexF64}, Ptr{ComplexF64}),
+        convert(Int32, n),
         ds,
         Ξ,
     )
@@ -97,8 +98,8 @@ function cspherebessel(mstm, n::Int64, z::ComplexF64)
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_cspherebessel),
         Cvoid,
-        (Ref{Int64}, Ref{ComplexF64}, Ptr{ComplexF64}, Ptr{ComplexF64}),
-        n,
+        (Ref{Int32}, Ref{ComplexF64}, Ptr{ComplexF64}, Ptr{ComplexF64}),
+        convert(Int32, n),
         z,
         csj,
         csy,
@@ -113,11 +114,11 @@ function vcfunc(mstm, m::Int64, n::Int64, k::Int64, l::Int64)
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_vcfunc),
         Cvoid,
-        (Ref{Int64}, Ref{Int64}, Ref{Int64}, Ref{Int64}, Ptr{Float64}),
-        m,
-        n,
-        k,
-        l,
+        (Ref{Int32}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ptr{Float64}),
+        convert(Int32, m),
+        convert(Int32, n),
+        convert(Int32, k),
+        convert(Int32, l),
         vcn
     )
     return OffsetArray(vcn, 0:n + l)
@@ -177,11 +178,11 @@ function pifunc(mstm, cb::Float64, ephi::ComplexF64, nmax::Int64, ndim::Int64)
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_pifunc),
         Cvoid,
-        (Ref{Float64}, Ref{ComplexF64}, Ref{Int64}, Ref{Int64}, Ptr{ComplexF64}),
+        (Ref{Float64}, Ref{ComplexF64}, Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}),
         cb,
         ephi,
-        nmax,
-        ndim,
+        convert(Int32, nmax),
+        convert(Int32, ndim),
         π_vec
     )
     return OffsetArray(π_vec, 0:ndim + 1, 1:ndim, 1:2)
@@ -192,10 +193,10 @@ function planewavecoef(mstm, α::Float64, β::Float64, nodr::Int64)
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_planewavecoef),
         Cvoid,
-        (Ref{Float64}, Ref{Float64}, Ref{Int64},  Ptr{ComplexF64}),
+        (Ref{Float64}, Ref{Float64}, Ref{Int32},  Ptr{ComplexF64}),
         α,
         β,
-        nodr,
+        convert(Int32, nodr),
         pmnp0
     )
     return OffsetArray(pmnp0, 0:nodr + 1, 1:nodr, 1:2, 1:2)
@@ -206,14 +207,47 @@ function gaussianbeamcoef(mstm, α::Float64, β::Float64, cbeam::Float64, nodr::
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_gaussianbeamcoef),
         Cvoid,
-        (Ref{Float64}, Ref{Float64}, Ref{Float64}, Ref{Int64}, Ptr{ComplexF64}),
+        (Ref{Float64}, Ref{Float64}, Ref{Float64}, Ref{Int32}, Ptr{ComplexF64}),
         α,
         β,
         cbeam,
-        nodr,
+        convert(Int32, nodr),
         pmnp0
     )
     return OffsetArray(pmnp0, 0:nodr + 1, 1:nodr, 1:2, 1:2)
+end
+
+function sphereplanewavecoef(mstm, nodr::Array{Int64,1}, α::Float64, β::Float64, rpos::Array{Float64,2}, hostsphere::Array{Int64,1}, numberfieldexp::Array{Int64,1}, rimedium::Array{ComplexF64,1})
+    nsphere = length(nodr)
+    nodrmax = maximum(nodr)
+
+    # Valid the input
+    @assert length(hostsphere) == nsphere
+    @assert length(numberfieldexp) == nsphere
+    @assert size(rpos) == (3, nsphere)
+    @assert length(rimedium) == 2
+
+    neqns = 2 * sum(numberfieldexp[i] * nodr[i] * (nodr[i] + 2) for i in 1:nsphere)
+    pmnp = zeros(ComplexF64, 2neqns)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_sphereplanewavecoef),
+        Cvoid,
+        (Ref{Int32}, Ref{Int32}, Ptr{Int32}, Ref{Int32}, Ref{Float64}, Ref{Float64}, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}, Ptr{ComplexF64}, Ptr{ComplexF64}),
+        convert(Int32, nsphere),
+        convert(Int32, neqns),
+        convert(Array{Int32, 1}, nodr),
+        convert(Int32, nodrmax),
+        α,
+        β,
+        rpos,
+        convert(Array{Int32, 1}, hostsphere),
+        convert(Array{Int32, 1}, numberfieldexp),
+        rimedium,
+        pmnp
+    )
+
+    return pmnp
 end
 
 end # module Wrapper
