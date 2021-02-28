@@ -1154,4 +1154,74 @@ function vwhcalc(ctx::ConstantContext, rpos::Array{Float64,1}, ri::Array{Complex
     return vwh
 end
 
+function vwhaxialcalc(ctx::ConstantContext, rpos::Array{Float64,1}, ri::Array{ComplexF64,1}, nodr::Int64, itype::Int64)
+    @assert itype == 1 || itype == 3
+    @assert length(rpos) == 3
+    @assert length(ri) == 2
+
+    umn = OffsetArray(zeros(ComplexF64, 5, nodr + 2, 2), -2:2, 0:(nodr + 1), 1:2)
+    hn = OffsetArray(zeros(ComplexF64, nodr + 2, 2), 0:(nodr + 1), 1:2)
+
+    nodrmax = 0
+    if nodr > nodrmax
+        nodrmax = nodr
+        init!(ctx, nodr + 2)
+    end
+
+    r, ct, E_ϕ = cartosphere(rpos)
+    vwh = zeros(ComplexF64, 3, 2, 2, nodr)
+    _, fnr, monen, vwh_coef = get_offset_constants(ctx)
+    if r <= 1e-4
+        if itype == 3
+            return vwh
+        end
+        vwh[1, 1, 1, 1] = 0.5fnr[2] / fnr[3]
+        vwh[2, 1, 1, 1] = -.5ci * fnr[2] / fnr[3]
+        vwh[1, 1, 2, 1] = -.5fnr[2] / fnr[3]
+        vwh[2, 1, 2, 1] = -.5ci * fnr[2] / fnr[3]
+        return vwh
+    end
+    nodrp1 = nodr + 1
+    nodrm1 = nodr - 1
+
+    a = ri * r
+    for p in 1:2
+        hn[:, p] = (itype == 1 ? cricbessel(nodrp1, a[p]) : crichankel(nodrp1, a[p])) / a[p]
+    end
+
+    pmn = normalizedlegendre(ctx, ct, 2, nodrp1)
+    E_ϕm = ephicoef(E_ϕ, 2)
+    umn[0, 0, 1:2] = hn[0, 1:2] * fnr[2]
+    for n in 1:nodrp1
+        p = min(n, 2)
+        for m in (-p):p
+            umn[m, n, 1:2] = hn[n, 1:2] * (fnr[2] * pmn[m, n] * E_ϕm[m])
+        end
+    end
+
+    for p in 1:2
+        sp = -monen[p]
+        for n in 1:nodr
+            np1 = n + 1
+            nm1 = n - 1
+            for m in [-1, 1]
+                k = (m + 1) ÷ 2 + 1
+                mp1 = m + 1
+                mm1 = m - 1
+                a1 = vwh_coef[m, n, 1, 1] * umn[mp1, np1, p] + vwh_coef[m, n, 1, -1] * umn[mp1, nm1, p]
+                b1 = vwh_coef[m, n, -1, 1] * umn[mm1, np1, p] + vwh_coef[m, n, -1, -1] * umn[mm1, nm1, p]
+                z1 = vwh_coef[m, n, 0, 1] * umn[m, np1, p] + vwh_coef[m, n, 0, -1] * umn[m, nm1, p]
+                a2 = vwh_coef[m, n, 1, 0] * umn[mp1, n, p]
+                b2 = vwh_coef[m, n, -1, 0] * umn[mm1, n, p]
+                z2 = vwh_coef[m, n, 0, 0] * umn[m, n, p]
+                vwh[1, p, k, n] = -0.5(a1 + b1) - 0.5ci * sp * (a2 + b2)
+                vwh[2, p, k, n] = -0.5ci * (-a1 + b1) - 0.5sp * (a2 - b2)
+                vwh[3, p, k, n] = -z1 - sp * ci * z2
+            end
+        end
+    end
+
+    return vwh
+end
+
 end # module SpecialFunctions

@@ -285,6 +285,23 @@ using Libdl
                 isapprox(vwh_julia, vwh_fortran)
             end
         end
+
+        @testset "vwhaxialcalc($rpos, $nodr, $itype)" for (rpos, nodr, itype) in [
+            ([0.0, 0.0, 0.0], 5, 1),
+            ([0.0, 0.0, 0.0], 5, 3),
+            ([1.0, -0.05, 0.04], 10, 1),
+            ([1.0, -0.05, 0.04], 10, 3),
+            ([1.0, -0.05, 0.04], 20, 1),
+            ([1.0, -0.05, 0.04], 20, 3),
+        ]
+            @test begin
+                ri = [1.0 + 0.5im, 1.0 - 0.5im]
+                ctx = MSTM.Constants.init()
+                vwh_julia = MSTM.SpecialFunctions.vwhaxialcalc(ctx, rpos, ri, nodr, itype)
+                vwh_fortran = MSTM.Wrapper.vwhaxialcalc(mstm, rpos, ri, nodr, itype)
+                isapprox(vwh_julia, vwh_fortran)
+            end
+        end
     end
 
     Libdl.dlclose(mstm)

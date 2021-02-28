@@ -386,10 +386,35 @@ function planewavetruncationorder(mstm, r::Float64, rimedium::Array{ComplexF64,1
 end
 
 function vwhcalc(mstm, rpos::Array{Float64,1}, ri::Array{ComplexF64,1}, nodr::Int64, itype::Int64)
+    @assert itype == 1 || itype == 3
+    @assert length(rpos) == 3
+    @assert length(ri) == 2
+
     vwh = zeros(ComplexF64, 3, 2, nodr * (nodr + 2))
 
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_vwhcalc),
+        Cvoid,
+        (Ptr{Float64}, Ptr{ComplexF64}, Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}),
+        rpos,
+        ri,
+        convert(Int32, nodr),
+        convert(Int32, itype),
+        vwh,
+    )
+
+    return vwh
+end
+
+function vwhaxialcalc(mstm, rpos::Array{Float64,1}, ri::Array{ComplexF64,1}, nodr::Int64, itype::Int64)
+    @assert itype == 1 || itype == 3
+    @assert length(rpos) == 3
+    @assert length(ri) == 2
+
+    vwh = zeros(ComplexF64, 3, 2, 2, nodr)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_vwhaxialcalc),
         Cvoid,
         (Ptr{Float64}, Ptr{ComplexF64}, Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}),
         rpos,
