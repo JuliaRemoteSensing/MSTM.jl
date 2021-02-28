@@ -281,14 +281,6 @@ function axialtrancoefrecurrence(mstm, itype::Int64, r::Float64, ri::Array{Compl
     return ac
 end
 
-function axialtrancoefinit!(mstm, nmax::Int64)
-    init!(mstm, nmax)
-
-    ccall(Libdl.dlsym(mstm, :__specialfuncs_MOD_axialtrancoefinit), Cvoid, (Ref{Int32},), convert(Int32, nmax))
-
-    return
-end
-
 function tranordertest(mstm, r::Float64, ri::ComplexF64, lmax::Int64, ϵ::Float64)
     nmax = Ref{Int32}(0)
 
