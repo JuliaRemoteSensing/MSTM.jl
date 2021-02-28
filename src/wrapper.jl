@@ -292,12 +292,9 @@ end
 function axialtrancoefinit!(mstm, nmax::Int64)
     init!(mstm, nmax)
 
-    ccall(
-        Libdl.dlsym(mstm, :__specialfuncs_MOD_axialtrancoefinit),
-        Cvoid,
-        (Ref{Int32},),
-        convert(Int32, nmax),
-    )
+    ccall(Libdl.dlsym(mstm, :__specialfuncs_MOD_axialtrancoefinit), Cvoid, (Ref{Int32},), convert(Int32, nmax))
+
+    return
 end
 
 function tranordertest(mstm, r::Float64, ri::ComplexF64, lmax::Int64, ϵ::Float64)
@@ -306,15 +303,54 @@ function tranordertest(mstm, r::Float64, ri::ComplexF64, lmax::Int64, ϵ::Float6
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_tranordertest),
         Cvoid,
-        (Ref{Float64}, Ref{ComplexF64}, Ref{Int32}, Ref{Float64}, Ref{Int32},),
+        (Ref{Float64}, Ref{ComplexF64}, Ref{Int32}, Ref{Float64}, Ref{Int32}),
         r,
         ri,
         convert(Int32, lmax),
         ϵ,
-        nmax
+        nmax,
     )
 
     return convert(Int64, nmax.x)
+end
+
+function gentrancoef(
+    mstm, 
+    itype::Int64, 
+    xptran::Array{Float64,1},
+    ri::Array{ComplexF64, 1},
+    nrow0::Int64,
+    nrow1::Int64,
+    ncol0::Int64,
+    ncol1::Int64,
+    iaddrow0::Int64,
+    iaddcol0::Int64,
+)
+    @assert itype == 1 || itype == 3
+    @assert length(xptran) == 3
+    @assert length(ri) == 2
+    @assert 1 <= nrow0 <= nrow1
+    @assert 1 <= ncol0 <= ncol1
+
+    ac = zeros(ComplexF64, 2, nrow1 * (nrow1 + 2) - (nrow0 - 1) * (nrow0 - 1) + iaddrow0, ncol1 * (ncol1 + 2) - (ncol0 - 1) * (ncol0 + 1) + iaddcol0)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_gentrancoef),
+        Cvoid,
+        (Ref{Int32}, Ptr{Float64}, Ptr{ComplexF64}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}),
+        convert(Int32, itype),
+        xptran,
+        ri,
+        convert(Int32, nrow0),
+        convert(Int32, nrow1),
+        convert(Int32, ncol0),
+        convert(Int32, ncol1),
+        convert(Int32, iaddrow0),
+        convert(Int32, iaddcol0),
+        ac
+    )
+
+    return ac
 end
 
 end # module Wrapper

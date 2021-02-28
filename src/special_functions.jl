@@ -811,8 +811,8 @@ function axialtrancoefinit!(ctx::ConstantContext, nmax::Int64)
 
     _, fnr, monen, _ = get_offset_constants(ctx)
     vcc, fnm1, fn, fnp1 = get_offset_axial_constants(ctx)
-    vc1 = OffsetArray(zeros(2nmax + 1), 0:2nmax)
-    vc2 = OffsetArray(zeros(2nmax + 1), 0:2nmax)
+    vc1 = OffsetArray(zeros(2nmax + 1), 0:(2nmax))
+    vc2 = OffsetArray(zeros(2nmax + 1), 0:(2nmax))
     for n in 1:nmax
         n21 = 2n + 1
         for l in 1:nmax
@@ -860,17 +860,17 @@ function tranordertest(ctx::ConstantContext, r::Float64, ri::ComplexF64, lmax::I
     _, fnr, _, _ = get_offset_constants(ctx)
 
     z = r * ri
-    vc1 = OffsetArray(zeros(nlim + lmax + 1), 0:nlim + lmax)
+    vc1 = OffsetArray(zeros(nlim + lmax + 1), 0:(nlim + lmax))
     s = 0.0
 
     for n in 1:nlim
         Ξ = cricbessel(n + lmax, z)
-        for l in 0:n +lmax
+        for l in 0:(n + lmax)
             Ξ[l] = Ξ[l] / z * ci^l
         end
         n21 = 2n + 1
         l = lmax
-        c = fnr[n21] * fnr[2l+1] * ci^(n - l)
+        c = fnr[n21] * fnr[2l + 1] * ci^(n - l)
         vcfunc!(ctx, -1, n, 1, l, vc1)
         wmin = abs(n - l)
         wmax = n + l
@@ -914,6 +914,122 @@ function moffset(m::Int64, ntot::Int64, ltot::Int64)
     else
         return 2 * (-3ltot * (m - 1)^2 + 6ltot * m * ntot + (m - 1) * (m * (-4 + 2m - 3ntot) + 3(ntot + 1))) ÷ 3
     end
+end
+
+"""
+    gentrancoef(ctx, itype, xptran, ri, nrow0, nrow1, ncol0, ncol1, iaddrow0, iaddcol0)
+
+Calculates the vwh translation coefficients for a general translation from one origin to another.
+"""
+function gentrancoef(
+    ctx::ConstantContext,
+    itype::Int64,
+    xptran::Array{Float64,1},
+    ri::Array{ComplexF64, 1},
+    nrow0::Int64,
+    nrow1::Int64,
+    ncol0::Int64,
+    ncol1::Int64,
+    iaddrow0::Int64,
+    iaddcol0::Int64,
+)
+    @assert itype == 1 || itype == 3
+    @assert length(xptran) == 3
+    @assert length(ri) == 2
+    @assert 1 <= nrow0 <= nrow1
+    @assert 1 <= ncol0 <= ncol1
+
+    ntot = nrow1 + ncol1
+    jnc = OffsetArray(zeros(ComplexF64, ntot + 1, 2), 0:ntot, 1:2)
+    r, ct, E_ϕ = cartosphere(xptran)
+    nblkr0 = (nrow0 - 1) * (nrow0 + 1)
+    nblkr1 = nrow1 * (nrow1 + 2)
+    nblkc0 = (ncol0 - 1) * (ncol0 + 1)
+    nblkc1 = ncol1 * (ncol1 + 2)
+
+    ac = zeros(ComplexF64, 2, nblkr1 - nblkr0 + iaddrow0, nblkc1 - nblkc0 + iaddcol0)
+
+    if iszero(r) 
+        for n in nblkr0 + 1:nblkr1
+            mn = n - nblkr0 + iaddrow0
+            if n > nblkc0 && n <= nblkc1 && itype == 1
+                ac[1, mn, n - nblkc0 + iaddcol0] = 1
+                ac[2, mn, n - nblkc0 + iaddcol0] = 1
+            end
+        end
+        return ac
+    end
+
+    kmax = 0
+    ct0 = ct
+    drot = rotcoef(ctx, ct0, kmax, ntot)
+    E_ϕm = ephicoef(E_ϕ, ntot)
+    z = ri * r
+
+    for p in 1:2
+        jnc[:, p] = itype == 1 ? cricbessel(ntot, z[p]) / z[p] : crichankel(ntot, z[p]) / z[p]
+        for n in 0:ntot
+            jnc[n, p] *= ci^n
+        end
+    end
+
+    _, fnr, monen, _ = get_offset_constants(ctx)
+
+    vc1 = OffsetArray(zeros(ntot + 1), 0:ntot)
+    vc2 = OffsetArray(zeros(ntot + 1), 0:ntot)
+    atc = zeros(ComplexF64, 2, 2)
+    for l in ncol0:ncol1
+        ll1 = l * (l + 1)
+        for n in nrow0:nrow1
+            nn1 = n * (n + 1)
+            wmax = n + l
+            vcfunc!(ctx, -1, n, 1, l, vc2)
+            c = -ci^(n-l) * fnr[2n+1] * fnr[2l+1]
+            for k in -l:l
+                kl = ll1 + k - nblkc0 + iaddcol0
+                for m in -n:n
+                    m1m = monen[m]
+                    mn = nn1 + m - nblkr0 + iaddrow0
+                    v = k - m
+                    vcfunc!(ctx, -m, n, k, l, vc1)
+                    a = 0.0
+                    b = 0.0
+                    wmin = max(abs(v), abs(n - l))
+                    for p in 1:2
+                        for w in wmax:-1:wmin
+                            vw = w * (w + 1) + v
+                            if (wmax - w) & 1 == 0 
+                                a += vc1[w] * vc2[w] * jnc[w, p] * drot[0, vw]
+                            else
+                                b += vc1[w] * vc2[w] * jnc[w, p] * drot[0, vw]
+                            end
+                        end
+                        atc[p, 1] = a
+                        atc[p, 2] = b
+                    end
+                    ac[1, mn, kl] = (atc[1, 1] + atc[1, 2]) * c * m1m * E_ϕm[v]
+                    ac[2, mn, kl] = (atc[2, 1] - atc[2, 2]) * c * m1m * E_ϕm[v]
+                end
+            end
+        end
+    end
+
+    return ac
+end
+
+function cartosphere(xp::Array{Float64,1})
+    @assert length(xp) == 3
+
+    r = xp[1]^2 + xp[2]^2 + xp[3]^2
+    if iszero(r)
+        return r, 1.0, 1.0 + 0.0im
+    end
+
+    r = √r
+    ct = xp[3] / r
+    E_ϕ = (iszero(xp[1]) && iszero(xp[2])) ? 1.0 + 0.0im : ComplexF64(xp[1], xp[2]) / √(xp[1]^2 + xp[2]^2)
+
+    return r, ct, E_ϕ
 end
 
 end # module SpecialFunctions

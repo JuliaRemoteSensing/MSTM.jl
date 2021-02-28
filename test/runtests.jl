@@ -206,6 +206,23 @@ using Libdl
                 nmax_julia == nmax_fortran
             end
         end
+
+        @testset "gentrancoef($itype, $xptran, $nrow0, $nrow1, $ncol0, $ncol1, $iaddrow0, $iaddcol0)" for (itype,xptran,nrow0,nrow1,ncol0,ncol1, iaddrow0, iaddcol0) in [
+            (1, [0.0, 0.0, 0.0], 1, 5, 1, 5, 0, 0),
+            (3, [0.0, 0.0, 0.0], 1, 5, 1, 5, 0, 0),
+            (1, [1.0, -0.05, 0.04], 1, 5, 1, 5, 0, 0),
+            (3, [1.0, -0.05, 0.04], 1, 5, 1, 5, 0, 0),
+            (1, [1.0, -0.05, 0.04], 1, 5, 1, 5, 5, 5),
+            (3, [1.0, -0.05, 0.04], 1, 5, 1, 5, 2, 3),
+        ]
+            @test begin
+                ri = [1.0 + 0.5im, 1.0 - 0.5im]
+                ctx = MSTM.Constants.init()
+                ac_julia = MSTM.SpecialFunctions.gentrancoef(ctx, itype, xptran, ri, nrow0, nrow1, ncol0, ncol1, iaddrow0, iaddcol0)
+                ac_fortran = MSTM.Wrapper.gentrancoef(mstm, itype, xptran, ri, nrow0, nrow1, ncol0, ncol1, iaddrow0, iaddcol0)
+                isapprox(ac_julia, ac_fortran)
+            end
+        end
     end
 
     Libdl.dlclose(mstm)
