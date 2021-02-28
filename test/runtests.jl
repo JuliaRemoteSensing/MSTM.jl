@@ -302,6 +302,17 @@ using Libdl
                 isapprox(vwh_julia, vwh_fortran)
             end
         end
+
+        @testset "twobytwoinverse($mat)" for mat in [
+            [1.1 + 1.0im 2.2 - 1.5im; 3.3 - 0.2im -2.5 + 0.4im],
+            [1.1 + 1.0im 1.2 + 1.5im; 0.3 - 0.2im -1.5 + 0.3im],
+        ]
+            @test begin
+                imat_julia = MSTM.SpecialFunctions.twobytwoinverse(mat)
+                imat_fortran = MSTM.Wrapper.twobytwoinverse(mstm, mat)
+                isapprox(imat_julia, imat_fortran)
+            end
+        end
     end
 
     Libdl.dlclose(mstm)

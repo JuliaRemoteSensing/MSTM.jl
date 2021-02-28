@@ -1,5 +1,6 @@
 module Wrapper
 using Libdl
+using LinearAlgebra
 using OffsetArrays
 using ..SpecialFunctions
 
@@ -425,6 +426,23 @@ function vwhaxialcalc(mstm, rpos::Array{Float64,1}, ri::Array{ComplexF64,1}, nod
     )
 
     return vwh
+end
+
+function twobytwoinverse(mstm, mat::Array{ComplexF64, 2})
+    @assert size(mat) == (2, 2)
+    @assert det(mat) != 0
+
+    imat = zeros(ComplexF64, 2, 2)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_twobytwoinverse),
+        Cvoid,
+        (Ptr{ComplexF64}, Ptr{ComplexF64}),
+        mat,
+        imat,
+    )
+
+    return imat
 end
 
 end # module Wrapper

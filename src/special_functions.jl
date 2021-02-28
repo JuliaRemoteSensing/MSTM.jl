@@ -1,4 +1,5 @@
 module SpecialFunctions
+using LinearAlgebra
 using OffsetArrays
 using ..Constants
 
@@ -1222,6 +1223,13 @@ function vwhaxialcalc(ctx::ConstantContext, rpos::Array{Float64,1}, ri::Array{Co
     end
 
     return vwh
+end
+
+function twobytwoinverse(mat::Array{ComplexF64,2})
+    @assert size(mat) == (2, 2)
+    @assert det(mat) != 0
+
+    return inv(mat)
 end
 
 end # module SpecialFunctions
