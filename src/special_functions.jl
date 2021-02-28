@@ -1053,4 +1053,25 @@ function eulerrotation(xp::Array{Float64,1}, eulerangf::Array{Float64,1}, dir::I
     return mat3 * (mat2 * (mat1 * xp))
 end
 
+function planewavetruncationorder(r::Float64, rimedium::Array{ComplexF64}, ϵ::Float64)
+    @assert length(rimedium) == 2
+    
+    rib = 2.0 / (1.0 / rimedium[1] + 1.0 / rimedium[2])
+    n1 = max(10, floor(Int, 3r + 1))
+    rri = r * rib
+    jn = cricbessel(n1, rri) / rri
+    eir = exp(-ci * rri)
+    s = jn[0] * eir
+
+    for n in 1:n1
+        s += ci ^ n * (2n + 1) * jn[n] * eir
+        err = abs(1.0 - s)
+        if err < ϵ
+            return n
+        end
+    end
+
+    return n1
+end
+
 end # module SpecialFunctions

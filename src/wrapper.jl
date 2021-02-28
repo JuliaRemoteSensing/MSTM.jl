@@ -16,6 +16,7 @@ function bcof(mstm, notd::Int64)
     bcof_addr_ptr = cglobal(Libdl.dlsym(mstm, :__numconstants_MOD_bcof), UInt64)
     bcof_addr = convert(Ptr{Float64}, unsafe_load(bcof_addr_ptr))
     bcof = unsafe_wrap(Array{Float64,2}, bcof_addr, (nbc + 1, nbc + 1))
+    
     return OffsetArray(bcof, 0:nbc, 0:nbc)
 end
 
@@ -23,15 +24,6 @@ function vwh_coef(mstm, notd::Int64)
     vwh_coef_addr_ptr = cglobal(Libdl.dlsym(mstm, :__numconstants_MOD_vwh_coef), UInt64)
     vwh_coef_addr = convert(Ptr{Float64}, unsafe_load(vwh_coef_addr_ptr))
     vwh_coef = unsafe_wrap(Array{Float64}, vwh_coef_addr, ((2notd + 1) * notd * 3 * 3,))
-
-    # FIXME: Exclude outliners as a temporary workaround
-    # Need to figure out why there are these strange values
-    for idx in eachindex(vwh_coef)
-        if abs(vwh_coef[idx]) < 1e-20 || abs(vwh_coef[idx] > 1e20)
-            vwh_coef[idx] = 0
-        end
-    end
-    replace!(vwh_coef, NaN => 0)
 
     return OffsetArray(reshape(vwh_coef, 2notd + 1, notd, 3, 3), (-notd):notd, 1:notd, -1:1, -1:1)
 end
@@ -383,6 +375,22 @@ function eulerrotation(mstm, xp::Array{Float64,1}, eulerangf::Array{Float64,1}, 
     )
 
     return xprot
+end
+
+function planewavetruncationorder(mstm, r::Float64, rimedium::Array{ComplexF64, 1}, ϵ::Float64)
+    nodr = Ref{Int32}(0)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_planewavetruncationorder),
+        Cvoid,
+        (Ref{Float64}, Ptr{ComplexF64}, Ref{Float64}, Ref{Int32}),
+        r,
+        rimedium,
+        ϵ,
+        nodr,
+    )
+
+    return convert(Int64, nodr.x)
 end
 
 end # module Wrapper

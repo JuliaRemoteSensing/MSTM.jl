@@ -6,20 +6,20 @@ using Libdl
     mstm_lib = ("CI" => "true") in ENV ? "/home/runner/work/MSTM.jl/MSTM.jl/shared/mstm" : "../shared/mstm"
     mstm = Libdl.dlopen(mstm_lib)
 
-    # @testset "Constants" begin
-    #     @testset "init!($notd)" for notd in [5, 10, 20, 50, 100]
-    #         @test begin
-    #             ctx = MSTM.Constants.init(notd)
-    #             bcof_julia, _, _, vwh_coef_julia = MSTM.Constants.get_offset_constants(ctx)
+    @testset "Constants" begin
+        @testset "init!($notd)" for notd in [5, 10, 20, 50, 100]
+            @test begin
+                ctx = MSTM.Constants.init(notd)
+                bcof_julia, _, _, vwh_coef_julia = MSTM.Constants.get_offset_constants(ctx)
 
-    #             MSTM.Wrapper.init!(mstm, notd)
-    #             bcof_fortran = MSTM.Wrapper.bcof(mstm, notd)
-    #             vwh_coef_fortran = MSTM.Wrapper.vwh_coef(mstm, notd)
+                MSTM.Wrapper.init!(mstm, notd)
+                bcof_fortran = MSTM.Wrapper.bcof(mstm, notd)
+                vwh_coef_fortran = MSTM.Wrapper.vwh_coef(mstm, notd)
 
-    #             isapprox(bcof_julia, bcof_fortran) && isapprox(vwh_coef_julia, vwh_coef_fortran)
-    #         end
-    #     end
-    # end
+                isapprox(bcof_julia, bcof_fortran) && isapprox(vwh_coef_julia, vwh_coef_fortran)
+            end
+        end
+    end
 
     @testset "SpecialFunctions" begin
         ϵ = 1e-8
@@ -254,6 +254,18 @@ using Libdl
                 xprot_julia = MSTM.SpecialFunctions.eulerrotation(xp, eulerangf, dir)
                 xprot_fortran = MSTM.Wrapper.eulerrotation(mstm, xp, eulerangf, dir)
                 isapprox(xprot_julia, xprot_fortran)
+            end
+        end
+
+        @testset "planewavetruncationorder($r, $rimedium, $ϵ)" for (r, rimedium, ϵ) in [
+            (0.01, [1.1 + 0.3im, 0.8 - 0.2im], 1e-4),
+            (0.1, [1.1 + 0.03im, 1.1 - 0.05im], 1e-6),
+            (0.35, [1.1 + 0.003im, 1.2 + 1.1im], 1e-8),
+        ]
+            @test begin
+                nodr_julia = MSTM.SpecialFunctions.planewavetruncationorder(r, rimedium, ϵ)
+                nodr_fortran = MSTM.Wrapper.planewavetruncationorder(mstm, r, rimedium, ϵ)
+                nodr_julia == nodr_fortran
             end
         end
     end
