@@ -23,11 +23,7 @@ using Libdl
 
     @testset "SpecialFunctions" begin
         ϵ = 1e-8
-        @testset "ricbessel($n, $ds)" for (n, ds) in [
-            (50, 10.0),
-            (100, 100.0),
-            (150, 200.0),
-        ]
+        @testset "ricbessel($n, $ds)" for (n, ds) in [(50, 10.0), (100, 100.0), (150, 200.0)]
             @test begin
                 Ψ_julia = MSTM.SpecialFunctions.ricbessel(n, ds, ϵ)
                 Ψ_fortran = MSTM.Wrapper.ricbessel(mstm, n, ds, ϵ)
@@ -35,11 +31,7 @@ using Libdl
             end
         end
 
-        @testset "richankel($n, $ds)" for (n, ds) in [
-            (50, 10.0),
-            (100, 100.0),
-            (150, 200.0),
-        ]
+        @testset "richankel($n, $ds)" for (n, ds) in [(50, 10.0), (100, 100.0), (150, 200.0)]
             @test begin
                 Ξ_julia = MSTM.SpecialFunctions.richankel(n, ds)
                 Ξ_fortran = MSTM.Wrapper.richankel(mstm, n, ds)
@@ -55,7 +47,7 @@ using Libdl
             @test begin
                 Ψ_julia = MSTM.SpecialFunctions.cricbessel(n, ds)
                 Ψ_fortran = MSTM.Wrapper.cricbessel(mstm, n, ds)
-                isapprox(Ψ_julia, Ψ_fortran)   
+                isapprox(Ψ_julia, Ψ_fortran)
             end
         end
 
@@ -67,7 +59,7 @@ using Libdl
             @test begin
                 Ξ_julia = MSTM.SpecialFunctions.crichankel(n, ds)
                 Ξ_fortran = MSTM.Wrapper.crichankel(mstm, n, ds)
-                isapprox(Ξ_julia, Ξ_fortran)   
+                isapprox(Ξ_julia, Ξ_fortran)
             end
         end
 
@@ -78,16 +70,12 @@ using Libdl
         ]
             @test begin
                 csj_julia, csy_julia = MSTM.SpecialFunctions.cspherebessel(n, z)
-                csj_fortran, csy_fortran = MSTM.Wrapper.cspherebessel(mstm, n, z) 
-                isapprox(csj_julia, csj_fortran) && isapprox(csy_julia, csy_fortran)   
+                csj_fortran, csy_fortran = MSTM.Wrapper.cspherebessel(mstm, n, z)
+                isapprox(csj_julia, csj_fortran) && isapprox(csy_julia, csy_fortran)
             end
         end
 
-        @testset "vcfunc($m, $n, $k, $l)" for (m, n, k, l) in [
-            (3, 4, 3, 10),
-            (30, 40, 30, 100),
-            (-4, 10, 4, 5),
-        ]
+        @testset "vcfunc($m, $n, $k, $l)" for (m, n, k, l) in [(3, 4, 3, 10), (30, 40, 30, 100), (-4, 10, 4, 5)]
             @test begin
                 ctx = MSTM.Constants.init()
                 vcn_julia = MSTM.SpecialFunctions.vcfunc(ctx, m, n, k, l)
@@ -96,11 +84,8 @@ using Libdl
             end
         end
 
-        @testset "normalizedlegendre($cbe, $mmax, $nmax)" for (cbe, mmax, nmax) in [
-            (0.5, 10, 10),
-            (-0.21, 15, 20),
-            (0.98, 30, 34),
-        ]
+        @testset "normalizedlegendre($cbe, $mmax, $nmax)" for (cbe, mmax, nmax) in
+                                                              [(0.5, 10, 10), (-0.21, 15, 20), (0.98, 30, 34)]
             @test begin
                 ctx = MSTM.Constants.init()
                 dc_julia = MSTM.SpecialFunctions.normalizedlegendre(ctx, cbe, mmax, nmax)
@@ -109,11 +94,7 @@ using Libdl
             end
         end
 
-        @testset "rotcoef($cbe, $kmax, $nmax)" for (cbe, kmax, nmax) in [
-            (0.5, 10, 10),
-            (-0.21, 15, 20),
-            (0.98, 30, 34),
-        ]
+        @testset "rotcoef($cbe, $kmax, $nmax)" for (cbe, kmax, nmax) in [(0.5, 10, 10), (-0.21, 15, 20), (0.98, 30, 34)]
             @test begin
                 ctx = MSTM.Constants.init()
                 dc_julia = MSTM.SpecialFunctions.rotcoef(ctx, cbe, kmax, nmax)
@@ -122,11 +103,7 @@ using Libdl
             end
         end
 
-        @testset "taufunc($cb, $nmax)" for (cb, nmax) in [
-            (0.5, 10),
-            (-0.21, 20),
-            (0.98, 34),
-        ]
+        @testset "taufunc($cb, $nmax)" for (cb, nmax) in [(0.5, 10), (-0.21, 20), (0.98, 34)]
             @test begin
                 ctx = MSTM.Constants.init()
                 τ_julia = MSTM.SpecialFunctions.taufunc(ctx, cb, nmax)
@@ -148,11 +125,8 @@ using Libdl
             end
         end
 
-        @testset "planewavecoef($α, $β, $nodr)" for (α, β, nodr) in [
-            (0.5, 0.6, 10),
-            (-0.21, -0.45, 14),
-            (0.98, -0.45, 20),
-        ]
+        @testset "planewavecoef($α, $β, $nodr)" for (α, β, nodr) in
+                                                    [(0.5, 0.6, 10), (-0.21, -0.45, 14), (0.98, -0.45, 20)]
             @test begin
                 ctx = MSTM.Constants.init()
                 pmnp0_julia = MSTM.SpecialFunctions.planewavecoef(ctx, α, β, nodr)
@@ -187,15 +161,39 @@ using Libdl
                 numberfieldexp = [2, 2, 3]
                 rimedium = [1.1 + 1.3im, 1.0 - 0.5im]
 
-                pmnp_julia = MSTM.SpecialFunctions.sphereplanewavecoef(ctx, nodr, α, β, rpos, hostsphere, numberfieldexp, rimedium)
+                pmnp_julia = MSTM.SpecialFunctions.sphereplanewavecoef(
+                    ctx,
+                    nodr,
+                    α,
+                    β,
+                    rpos,
+                    hostsphere,
+                    numberfieldexp,
+                    rimedium,
+                )
 
-                pmnp_fortran = MSTM.Wrapper.sphereplanewavecoef(mstm, nodr, α, β, rpos, hostsphere, numberfieldexp, rimedium)
-                
+                pmnp_fortran =
+                    MSTM.Wrapper.sphereplanewavecoef(mstm, nodr, α, β, rpos, hostsphere, numberfieldexp, rimedium)
+
                 isapprox(pmnp_julia, pmnp_fortran)
+            end
+        end
+
+        @testset "axialtrancoefrecurrence($itype, $r, $nmax, $lmax)" for (itype, r, nmax, lmax) in [
+            (1, 0.0, 10, 10),
+            (1, 1.3, 15, 20),
+            (3, 0.0, 4, 5),
+            (3, 4.3, 20, 15),
+        ]
+            @test begin
+                ri = [1.0 + 0.5im, 1.0 - 0.5im]
+                ctx = MSTM.Constants.init()
+                ac_julia = MSTM.SpecialFunctions.axialtrancoefrecurrence(ctx, itype, r, ri, nmax, lmax)
+                ac_fortran = MSTM.Wrapper.axialtrancoefrecurrence(mstm, itype, r, ri, nmax, lmax)
+                isapprox(ac_julia, ac_fortran)
             end
         end
     end
 
     Libdl.dlclose(mstm)
-
 end

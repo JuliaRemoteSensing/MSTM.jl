@@ -1,6 +1,7 @@
 module Wrapper
 using Libdl
 using OffsetArrays
+using ..SpecialFunctions
 
 # Constants <=> numconstants
 
@@ -119,9 +120,9 @@ function vcfunc(mstm, m::Int64, n::Int64, k::Int64, l::Int64)
         convert(Int32, n),
         convert(Int32, k),
         convert(Int32, l),
-        vcn
+        vcn,
     )
-    return OffsetArray(vcn, 0:n + l)
+    return OffsetArray(vcn, 0:(n + l))
 end
 
 function normalizedlegendre(mstm, cbe::Float64, mmax::Int64, nmax::Int64)
@@ -135,9 +136,9 @@ function normalizedlegendre(mstm, cbe::Float64, mmax::Int64, nmax::Int64)
         cbe,
         mmax,
         nmax,
-        dc
+        dc,
     )
-    return OffsetArray(dc, -mmax:mmax, 0:nmax)
+    return OffsetArray(dc, (-mmax):mmax, 0:nmax)
 end
 
 function rotcoef(mstm, cbe::Float64, kmax::Int64, nmax::Int64)
@@ -151,24 +152,17 @@ function rotcoef(mstm, cbe::Float64, kmax::Int64, nmax::Int64)
         cbe,
         kmax,
         nmax,
-        dc
+        dc,
     )
-    return OffsetArray(dc, -kmax:kmax, 0:nmax * (nmax + 2))
+    return OffsetArray(dc, (-kmax):kmax, 0:(nmax * (nmax + 2)))
 end
 
 function taufunc(mstm, cb::Float64, nmax::Int64)
     init!(mstm, nmax + 1)
 
     τ = zeros(nmax + 2, nmax, 2)
-    ccall(
-        Libdl.dlsym(mstm, :__specialfuncs_MOD_taufunc),
-        Cvoid,
-        (Ref{Float64}, Ref{Int64}, Ptr{Float64}),
-        cb,
-        nmax,
-        τ
-    )
-    return OffsetArray(τ, 0:nmax + 1, 1:nmax, 1:2)
+    ccall(Libdl.dlsym(mstm, :__specialfuncs_MOD_taufunc), Cvoid, (Ref{Float64}, Ref{Int64}, Ptr{Float64}), cb, nmax, τ)
+    return OffsetArray(τ, 0:(nmax + 1), 1:nmax, 1:2)
 end
 
 function pifunc(mstm, cb::Float64, ephi::ComplexF64, nmax::Int64, ndim::Int64)
@@ -183,9 +177,9 @@ function pifunc(mstm, cb::Float64, ephi::ComplexF64, nmax::Int64, ndim::Int64)
         ephi,
         convert(Int32, nmax),
         convert(Int32, ndim),
-        π_vec
+        π_vec,
     )
-    return OffsetArray(π_vec, 0:ndim + 1, 1:ndim, 1:2)
+    return OffsetArray(π_vec, 0:(ndim + 1), 1:ndim, 1:2)
 end
 
 function planewavecoef(mstm, α::Float64, β::Float64, nodr::Int64)
@@ -193,13 +187,13 @@ function planewavecoef(mstm, α::Float64, β::Float64, nodr::Int64)
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_planewavecoef),
         Cvoid,
-        (Ref{Float64}, Ref{Float64}, Ref{Int32},  Ptr{ComplexF64}),
+        (Ref{Float64}, Ref{Float64}, Ref{Int32}, Ptr{ComplexF64}),
         α,
         β,
         convert(Int32, nodr),
-        pmnp0
+        pmnp0,
     )
-    return OffsetArray(pmnp0, 0:nodr + 1, 1:nodr, 1:2, 1:2)
+    return OffsetArray(pmnp0, 0:(nodr + 1), 1:nodr, 1:2, 1:2)
 end
 
 function gaussianbeamcoef(mstm, α::Float64, β::Float64, cbeam::Float64, nodr::Int64)
@@ -212,12 +206,21 @@ function gaussianbeamcoef(mstm, α::Float64, β::Float64, cbeam::Float64, nodr::
         β,
         cbeam,
         convert(Int32, nodr),
-        pmnp0
+        pmnp0,
     )
-    return OffsetArray(pmnp0, 0:nodr + 1, 1:nodr, 1:2, 1:2)
+    return OffsetArray(pmnp0, 0:(nodr + 1), 1:nodr, 1:2, 1:2)
 end
 
-function sphereplanewavecoef(mstm, nodr::Array{Int64,1}, α::Float64, β::Float64, rpos::Array{Float64,2}, hostsphere::Array{Int64,1}, numberfieldexp::Array{Int64,1}, rimedium::Array{ComplexF64,1})
+function sphereplanewavecoef(
+    mstm,
+    nodr::Array{Int64,1},
+    α::Float64,
+    β::Float64,
+    rpos::Array{Float64,2},
+    hostsphere::Array{Int64,1},
+    numberfieldexp::Array{Int64,1},
+    rimedium::Array{ComplexF64,1},
+)
     nsphere = length(nodr)
     nodrmax = maximum(nodr)
 
@@ -233,21 +236,68 @@ function sphereplanewavecoef(mstm, nodr::Array{Int64,1}, α::Float64, β::Float6
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_sphereplanewavecoef),
         Cvoid,
-        (Ref{Int32}, Ref{Int32}, Ptr{Int32}, Ref{Int32}, Ref{Float64}, Ref{Float64}, Ptr{Float64}, Ptr{Int32}, Ptr{Int32}, Ptr{ComplexF64}, Ptr{ComplexF64}),
+        (
+            Ref{Int32},
+            Ref{Int32},
+            Ptr{Int32},
+            Ref{Int32},
+            Ref{Float64},
+            Ref{Float64},
+            Ptr{Float64},
+            Ptr{Int32},
+            Ptr{Int32},
+            Ptr{ComplexF64},
+            Ptr{ComplexF64},
+        ),
         convert(Int32, nsphere),
         convert(Int32, neqns),
-        convert(Array{Int32, 1}, nodr),
+        convert(Array{Int32,1}, nodr),
         convert(Int32, nodrmax),
         α,
         β,
         rpos,
-        convert(Array{Int32, 1}, hostsphere),
-        convert(Array{Int32, 1}, numberfieldexp),
+        convert(Array{Int32,1}, hostsphere),
+        convert(Array{Int32,1}, numberfieldexp),
         rimedium,
-        pmnp
+        pmnp,
     )
 
     return pmnp
+end
+
+function axialtrancoefrecurrence(mstm, itype::Int64, r::Float64, ri::Array{ComplexF64,1}, nmax::Int64, lmax::Int64)
+    @assert itype == 1 || itype == 3
+    @assert length(ri) == 2
+
+    init!(mstm, nmax)
+    ndim = atcdim(nmax, lmax)
+    ac = zeros(ComplexF64, ndim)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_axialtrancoefrecurrence),
+        Cvoid,
+        (Ref{Int32}, Ref{Float64}, Ptr{ComplexF64}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}),
+        convert(Int32, itype),
+        r,
+        ri,
+        convert(Int32, nmax),
+        convert(Int32, lmax),
+        convert(Int32, ndim),
+        ac,
+    )
+
+    return ac
+end
+
+function axialtrancoefinit!(mstm, nmax::Int64)
+    init!(mstm, nmax)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_axialtrancoefinit),
+        Cvoid,
+        (Ref{Int32},),
+        convert(Int32, nmax),
+    )
 end
 
 end # module Wrapper
