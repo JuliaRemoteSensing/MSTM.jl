@@ -925,7 +925,7 @@ function gentrancoef(
     ctx::ConstantContext,
     itype::Int64,
     xptran::Array{Float64,1},
-    ri::Array{ComplexF64, 1},
+    ri::Array{ComplexF64,1},
     nrow0::Int64,
     nrow1::Int64,
     ncol0::Int64,
@@ -949,8 +949,8 @@ function gentrancoef(
 
     ac = zeros(ComplexF64, 2, nblkr1 - nblkr0 + iaddrow0, nblkc1 - nblkc0 + iaddcol0)
 
-    if iszero(r) 
-        for n in nblkr0 + 1:nblkr1
+    if iszero(r)
+        for n in (nblkr0 + 1):nblkr1
             mn = n - nblkr0 + iaddrow0
             if n > nblkc0 && n <= nblkc1 && itype == 1
                 ac[1, mn, n - nblkc0 + iaddcol0] = 1
@@ -984,10 +984,10 @@ function gentrancoef(
             nn1 = n * (n + 1)
             wmax = n + l
             vcfunc!(ctx, -1, n, 1, l, vc2)
-            c = -ci^(n-l) * fnr[2n+1] * fnr[2l+1]
-            for k in -l:l
+            c = -ci^(n - l) * fnr[2n + 1] * fnr[2l + 1]
+            for k in (-l):l
                 kl = ll1 + k - nblkc0 + iaddcol0
-                for m in -n:n
+                for m in (-n):n
                     m1m = monen[m]
                     mn = nn1 + m - nblkr0 + iaddrow0
                     v = k - m
@@ -998,7 +998,7 @@ function gentrancoef(
                     for p in 1:2
                         for w in wmax:-1:wmin
                             vw = w * (w + 1) + v
-                            if (wmax - w) & 1 == 0 
+                            if (wmax - w) & 1 == 0
                                 a += vc1[w] * vc2[w] * jnc[w, p] * drot[0, vw]
                             else
                                 b += vc1[w] * vc2[w] * jnc[w, p] * drot[0, vw]
@@ -1030,6 +1030,27 @@ function cartosphere(xp::Array{Float64,1})
     E_ϕ = (iszero(xp[1]) && iszero(xp[2])) ? 1.0 + 0.0im : ComplexF64(xp[1], xp[2]) / √(xp[1]^2 + xp[2]^2)
 
     return r, ct, E_ϕ
+end
+
+"""
+    eulerrotation(xp)
+
+Euler rotation of a point (xp[1], xp[2], xp[3]).
+"""
+function eulerrotation(xp::Array{Float64,1}, eulerangf::Array{Float64,1}, dir::Int64)
+    @assert length(xp) == 3
+    @assert length(eulerangf) == 3
+
+    eulerang = dir == 1 ? eulerangf : -eulerangf[3:-1:1]
+
+    cang = [cos(x) for x in eulerang]
+    sang = [sin(x) for x in eulerang]
+
+    mat1 = [[cang[1], -sang[1], 0.0] [sang[1], cang[1], 0.0] [0.0, 0.0, 1.0]]
+    mat2 = [[cang[2], 0.0, sang[2]] [0.0, 1.0, 0.0] [-sang[2], 0.0, cang[2]]]
+    mat3 = [[cang[3], -sang[3], 0.0] [sang[3], cang[3], 0.0] [0.0, 0.0, 1.0]]
+
+    return mat3 * (mat2 * (mat1 * xp))
 end
 
 end # module SpecialFunctions

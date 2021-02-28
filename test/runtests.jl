@@ -195,9 +195,9 @@ using Libdl
         end
 
         @testset "tranordertest($r, $ri, $lmax, $ϵ)" for (r, ri, lmax, ϵ) in [
-            (0.01, 1.1+0.3im, 10, 1e-4),
-            (0.1, 1.1+0.03im, 20, 1e-6),
-            (0.35, 1.1+0.003im, 50, 1e-6),
+            (0.01, 1.1 + 0.3im, 10, 1e-4),
+            (0.1, 1.1 + 0.03im, 20, 1e-6),
+            (0.35, 1.1 + 0.003im, 50, 1e-6),
         ]
             @test begin
                 ctx = MSTM.Constants.init()
@@ -207,7 +207,16 @@ using Libdl
             end
         end
 
-        @testset "gentrancoef($itype, $xptran, $nrow0, $nrow1, $ncol0, $ncol1, $iaddrow0, $iaddcol0)" for (itype,xptran,nrow0,nrow1,ncol0,ncol1, iaddrow0, iaddcol0) in [
+        @testset "gentrancoef($itype, $xptran, $nrow0, $nrow1, $ncol0, $ncol1, $iaddrow0, $iaddcol0)" for (
+            itype,
+            xptran,
+            nrow0,
+            nrow1,
+            ncol0,
+            ncol1,
+            iaddrow0,
+            iaddcol0,
+        ) in [
             (1, [0.0, 0.0, 0.0], 1, 5, 1, 5, 0, 0),
             (3, [0.0, 0.0, 0.0], 1, 5, 1, 5, 0, 0),
             (1, [1.0, -0.05, 0.04], 1, 5, 1, 5, 0, 0),
@@ -218,9 +227,33 @@ using Libdl
             @test begin
                 ri = [1.0 + 0.5im, 1.0 - 0.5im]
                 ctx = MSTM.Constants.init()
-                ac_julia = MSTM.SpecialFunctions.gentrancoef(ctx, itype, xptran, ri, nrow0, nrow1, ncol0, ncol1, iaddrow0, iaddcol0)
-                ac_fortran = MSTM.Wrapper.gentrancoef(mstm, itype, xptran, ri, nrow0, nrow1, ncol0, ncol1, iaddrow0, iaddcol0)
+                ac_julia = MSTM.SpecialFunctions.gentrancoef(
+                    ctx,
+                    itype,
+                    xptran,
+                    ri,
+                    nrow0,
+                    nrow1,
+                    ncol0,
+                    ncol1,
+                    iaddrow0,
+                    iaddcol0,
+                )
+                ac_fortran =
+                    MSTM.Wrapper.gentrancoef(mstm, itype, xptran, ri, nrow0, nrow1, ncol0, ncol1, iaddrow0, iaddcol0)
                 isapprox(ac_julia, ac_fortran)
+            end
+        end
+
+        @testset "eulerrotation($xp, $eulerangf, $dir)" for (xp, eulerangf, dir) in [
+            ([1.02, 2.03, 3.04], [0.95, 2.33, 1.34], 1),
+            ([2.43, -23.2, -19.4], [10.2, 12.3, 11.3], -1),
+            ([-0.42, -0.2, -0.001], [-23.2, -23.4, 12.2], 1),
+        ]
+            @test begin
+                xprot_julia = MSTM.SpecialFunctions.eulerrotation(xp, eulerangf, dir)
+                xprot_fortran = MSTM.Wrapper.eulerrotation(mstm, xp, eulerangf, dir)
+                isapprox(xprot_julia, xprot_fortran)
             end
         end
     end

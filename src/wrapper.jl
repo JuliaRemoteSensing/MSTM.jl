@@ -315,10 +315,10 @@ function tranordertest(mstm, r::Float64, ri::ComplexF64, lmax::Int64, ϵ::Float6
 end
 
 function gentrancoef(
-    mstm, 
-    itype::Int64, 
+    mstm,
+    itype::Int64,
     xptran::Array{Float64,1},
-    ri::Array{ComplexF64, 1},
+    ri::Array{ComplexF64,1},
     nrow0::Int64,
     nrow1::Int64,
     ncol0::Int64,
@@ -332,12 +332,28 @@ function gentrancoef(
     @assert 1 <= nrow0 <= nrow1
     @assert 1 <= ncol0 <= ncol1
 
-    ac = zeros(ComplexF64, 2, nrow1 * (nrow1 + 2) - (nrow0 - 1) * (nrow0 - 1) + iaddrow0, ncol1 * (ncol1 + 2) - (ncol0 - 1) * (ncol0 + 1) + iaddcol0)
+    ac = zeros(
+        ComplexF64,
+        2,
+        nrow1 * (nrow1 + 2) - (nrow0 - 1) * (nrow0 - 1) + iaddrow0,
+        ncol1 * (ncol1 + 2) - (ncol0 - 1) * (ncol0 + 1) + iaddcol0,
+    )
 
     ccall(
         Libdl.dlsym(mstm, :__specialfuncs_MOD_gentrancoef),
         Cvoid,
-        (Ref{Int32}, Ptr{Float64}, Ptr{ComplexF64}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}),
+        (
+            Ref{Int32},
+            Ptr{Float64},
+            Ptr{ComplexF64},
+            Ref{Int32},
+            Ref{Int32},
+            Ref{Int32},
+            Ref{Int32},
+            Ref{Int32},
+            Ref{Int32},
+            Ptr{ComplexF64},
+        ),
         convert(Int32, itype),
         xptran,
         ri,
@@ -347,10 +363,26 @@ function gentrancoef(
         convert(Int32, ncol1),
         convert(Int32, iaddrow0),
         convert(Int32, iaddcol0),
-        ac
+        ac,
     )
 
     return ac
+end
+
+function eulerrotation(mstm, xp::Array{Float64,1}, eulerangf::Array{Float64,1}, dir::Int64)
+    xprot = zeros(3)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_eulerrotation),
+        Cvoid,
+        (Ptr{Float64}, Ptr{Float64}, Ref{Int32}, Ptr{Float64}),
+        xp,
+        eulerangf,
+        convert(Int32, dir),
+        xprot,
+    )
+
+    return xprot
 end
 
 end # module Wrapper
