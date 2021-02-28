@@ -4,6 +4,8 @@ using ..Constants
 
 export atcdim, ricbessel, richankel, cricbessel, crichankel, cspherebessel, vcfunc, normalizedlegendre
 
+const ci = 1.0im
+
 """
     ricbessel(n, ds, ϵ, Ψ)
 
@@ -115,7 +117,6 @@ function cricbessel(n::Int64, ds::ComplexF64)
 end
 
 function crichankel(n::Int64, ds::ComplexF64)
-    ci = ComplexF64(0, 1)
     Ξ = OffsetArray(zeros(ComplexF64, n + 1), 0:n)
     Ξ[0] = -ci * exp(ci * ds)
     Ψ_0 = sin(ds)
@@ -543,7 +544,6 @@ function planewavecoef(ctx::ConstantContext, α::Float64, β::Float64, nodr::Int
     init!(ctx, nodr)
 
     _, _, monen, _ = get_offset_constants(ctx)
-    ci = 1.0im
 
     τ_lr = OffsetArray(zeros(nodr + 2, nodr, 2), 0:(nodr + 1), 1:nodr, 1:2)
     pmnp0 = OffsetArray(zeros(ComplexF64, nodr + 2, nodr, 2, 2), 0:(nodr + 1), 1:nodr, 1:2, 1:2)
@@ -637,7 +637,6 @@ function sphereplanewavecoef(
     @assert size(rpos) == (3, nsphere)
     @assert length(rimedium) == 2
 
-    ci = 1.0im
     rib = 2 / (1 / rimedium[1] + 1 / rimedium[2])
     pmnp0 = planewavecoef(ctx, α, β, nodrmax)
     cb = cos(β)
@@ -696,7 +695,6 @@ function axialtrancoefrecurrence(
     ac = zeros(ComplexF64, ndim)
     act = zeros(ComplexF64, nmax, lmax, 2)
     actt = zeros(ComplexF64, 2, 2)
-    ci = 1.0im
 
     if iszero(r)
         if itype != 1
@@ -804,8 +802,6 @@ function axialtrancoefrecurrence(
 end
 
 function axialtrancoefinit!(ctx::ConstantContext, nmax::Int64)
-    ci = 1.0im
-
     init!(ctx, nmax)
 
     ctx.vcc = zeros(nmax, nmax * (nmax + 2), 2nmax + 1)
@@ -847,6 +843,57 @@ function axialtrancoefinit!(ctx::ConstantContext, nmax::Int64)
             fnp1[m, l] = fnr[l] * fnr[l + 2] * fnr[lp1 - m] * fnr[lp1 + m] / fnr[l + lp1] / fnr[2l + 3] / lp1
         end
     end
+end
+
+"""
+    tranordertest(ctx, r, ri, lmax, ϵ)
+
+Test to determine convergence of regular VSWF addition theorem for max order lmax and translation distance r w/ refractive index ri.
+"""
+function tranordertest(ctx::ConstantContext, r::Float64, ri::ComplexF64, lmax::Int64, ϵ::Float64)
+    if iszero(r)
+        return lmax
+    end
+
+    nlim = 200
+    init!(ctx, nlim + lmax)
+    _, fnr, _, _ = get_offset_constants(ctx)
+
+    z = r * ri
+    vc1 = OffsetArray(zeros(nlim + lmax + 1), 0:nlim + lmax)
+    s = 0.0
+
+    for n in 1:nlim
+        Ξ = cricbessel(n + lmax, z)
+        for l in 0:n +lmax
+            Ξ[l] = Ξ[l] / z * ci^l
+        end
+        n21 = 2n + 1
+        l = lmax
+        c = fnr[n21] * fnr[2l+1] * ci^(n - l)
+        vcfunc!(ctx, -1, n, 1, l, vc1)
+        wmin = abs(n - l)
+        wmax = n + l
+        m = 1
+        a = 0.0im
+        b = 0.0im
+        for w in wmin:wmax
+            alnw = vc1[w]^2
+            if (n + l + w) & 1 == 0
+                a += alnw * Ξ[w]
+            else
+                b += alnw * Ξ[w]
+            end
+        end
+        a *= c
+        b *= c
+        s += a * conj(a) + b * conj(b)
+        if abs(1.0 - s) < ϵ
+            return max(n, lmax)
+        end
+    end
+
+    return max(nlim, lmax)
 end
 
 function atcadd(m::Int64, n::Int64, ntot::Int64)

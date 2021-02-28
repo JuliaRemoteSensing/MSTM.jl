@@ -193,6 +193,19 @@ using Libdl
                 isapprox(ac_julia, ac_fortran)
             end
         end
+
+        @testset "tranordertest($r, $ri, $lmax, $ϵ)" for (r, ri, lmax, ϵ) in [
+            (0.01, 1.1+0.3im, 10, 1e-4),
+            (0.1, 1.1+0.03im, 20, 1e-6),
+            (0.35, 1.1+0.003im, 50, 1e-6),
+        ]
+            @test begin
+                ctx = MSTM.Constants.init()
+                nmax_julia = MSTM.SpecialFunctions.tranordertest(ctx, r, ri, lmax, ϵ)
+                nmax_fortran = MSTM.Wrapper.tranordertest(mstm, r, ri, lmax, ϵ)
+                nmax_julia == nmax_fortran
+            end
+        end
     end
 
     Libdl.dlclose(mstm)

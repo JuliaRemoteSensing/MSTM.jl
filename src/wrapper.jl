@@ -300,4 +300,21 @@ function axialtrancoefinit!(mstm, nmax::Int64)
     )
 end
 
+function tranordertest(mstm, r::Float64, ri::ComplexF64, lmax::Int64, ϵ::Float64)
+    nmax = Ref{Int32}(0)
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_tranordertest),
+        Cvoid,
+        (Ref{Float64}, Ref{ComplexF64}, Ref{Int32}, Ref{Float64}, Ref{Int32},),
+        r,
+        ri,
+        convert(Int32, lmax),
+        ϵ,
+        nmax
+    )
+
+    return convert(Int64, nmax.x)
+end
+
 end # module Wrapper
