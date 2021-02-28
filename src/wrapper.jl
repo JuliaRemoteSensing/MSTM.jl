@@ -16,7 +16,7 @@ function bcof(mstm, notd::Int64)
     bcof_addr_ptr = cglobal(Libdl.dlsym(mstm, :__numconstants_MOD_bcof), UInt64)
     bcof_addr = convert(Ptr{Float64}, unsafe_load(bcof_addr_ptr))
     bcof = unsafe_wrap(Array{Float64,2}, bcof_addr, (nbc + 1, nbc + 1))
-    
+
     return OffsetArray(bcof, 0:nbc, 0:nbc)
 end
 
@@ -377,7 +377,7 @@ function eulerrotation(mstm, xp::Array{Float64,1}, eulerangf::Array{Float64,1}, 
     return xprot
 end
 
-function planewavetruncationorder(mstm, r::Float64, rimedium::Array{ComplexF64, 1}, ϵ::Float64)
+function planewavetruncationorder(mstm, r::Float64, rimedium::Array{ComplexF64,1}, ϵ::Float64)
     nodr = Ref{Int32}(0)
 
     ccall(
@@ -391,6 +391,23 @@ function planewavetruncationorder(mstm, r::Float64, rimedium::Array{ComplexF64, 
     )
 
     return convert(Int64, nodr.x)
+end
+
+function vwhcalc(mstm, rpos::Array{Float64,1}, ri::Array{ComplexF64,1}, nodr::Int64, itype::Int64)
+    vwh = zeros(ComplexF64, 3, 2, nodr * (nodr + 2))
+
+    ccall(
+        Libdl.dlsym(mstm, :__specialfuncs_MOD_vwhcalc),
+        Cvoid,
+        (Ptr{Float64}, Ptr{ComplexF64}, Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}),
+        rpos,
+        ri,
+        convert(Int32, nodr),
+        convert(Int32, itype),
+        vwh,
+    )
+
+    return vwh
 end
 
 end # module Wrapper

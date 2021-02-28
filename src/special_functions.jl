@@ -1055,7 +1055,7 @@ end
 
 function planewavetruncationorder(r::Float64, rimedium::Array{ComplexF64}, ϵ::Float64)
     @assert length(rimedium) == 2
-    
+
     rib = 2.0 / (1.0 / rimedium[1] + 1.0 / rimedium[2])
     n1 = max(10, floor(Int, 3r + 1))
     rri = r * rib
@@ -1064,7 +1064,7 @@ function planewavetruncationorder(r::Float64, rimedium::Array{ComplexF64}, ϵ::F
     s = jn[0] * eir
 
     for n in 1:n1
-        s += ci ^ n * (2n + 1) * jn[n] * eir
+        s += ci^n * (2n + 1) * jn[n] * eir
         err = abs(1.0 - s)
         if err < ϵ
             return n
@@ -1072,6 +1072,86 @@ function planewavetruncationorder(r::Float64, rimedium::Array{ComplexF64}, ϵ::F
     end
 
     return n1
+end
+
+function vwhcalc(ctx::ConstantContext, rpos::Array{Float64,1}, ri::Array{ComplexF64,1}, nodr::Int64, itype::Int64)
+    @assert itype == 1 || itype == 3
+    @assert length(rpos) == 3
+    @assert length(ri) == 2
+
+    a1vec = OffsetArray(zeros(ComplexF64, 2nodr + 1), (-nodr):nodr)
+    b1vec = OffsetArray(zeros(ComplexF64, 2nodr + 1), (-nodr):nodr)
+    z1vec = OffsetArray(zeros(ComplexF64, 2nodr + 1), (-nodr):nodr)
+    a2vec = OffsetArray(zeros(ComplexF64, 2nodr + 1), (-nodr):nodr)
+    b2vec = OffsetArray(zeros(ComplexF64, 2nodr + 1), (-nodr):nodr)
+    z2vec = OffsetArray(zeros(ComplexF64, 2nodr + 1), (-nodr):nodr)
+    umn = OffsetArray(zeros(ComplexF64, 2nodr + 5, nodr + 2, 2), (-nodr - 2):(nodr + 2), 0:(nodr + 1), 1:2)
+    hn = OffsetArray(zeros(ComplexF64, nodr + 2, 2), 0:(nodr + 1), 1:2)
+
+    nodrmax = 0
+    if nodr > nodrmax
+        nodrmax = nodr
+        init!(ctx, nodr + 2)
+    end
+
+    r, ct, E_ϕ = cartosphere(rpos)
+    vwh = zeros(ComplexF64, 3, 2, nodr * (nodr + 2))
+    _, fnr, monen, vwh_coef = get_offset_constants(ctx)
+    if r <= 1e-4
+        if itype == 3
+            return vwh
+        end
+        for p in 1:2
+            vwh[1, p, 1] = 0.5fnr[2] / fnr[3]
+            vwh[2, p, 3] = vwh[2, p, 1] = -0.5ci * fnr[2] / fnr[3]
+            vwh[3, p, 2] = fnr[2] / fnr[6]
+            vwh[1, p, 3] = -.5fnr[2] / fnr[3]
+        end
+        return vwh
+    end
+    nodrp1 = nodr + 1
+    nodrm1 = nodr - 1
+
+    a = ri * r
+    for p in 1:2
+        hn[:, p] = (itype == 1 ? cricbessel(nodrp1, a[p]) : crichankel(nodrp1, a[p])) / a[p]
+    end
+
+    pmn = rotcoef(ctx, ct, 0, nodrp1)
+    E_ϕm = ephicoef(E_ϕ, nodrp1)
+
+    for p in 1:2
+        umn[0, 0, p] = hn[0, p] * fnr[2]
+        for n in 1:nodrp1
+            nn1 = n * (n + 1)
+            coeff = fnr[2] * hn[n, p]
+            for i in (-n):n
+                umn[i, n, p] = pmn[0, nn1 + i] * E_ϕm[i] * coeff
+            end
+        end
+    end
+
+    for p in 1:2
+        sp = -monen[p]
+        for n in 1:nodr
+            nn1 = n * (n + 1)
+            np1 = n + 1
+            nm1 = n - 1
+            for i in (-n):n
+                a1vec[i] = vwh_coef[i, n, 1, 1] * umn[i + 1, np1, p] + vwh_coef[i, n, 1, -1] * umn[i + 1, nm1, p]
+                b1vec[i] = vwh_coef[i, n, -1, 1] * umn[i - 1, np1, p] + vwh_coef[i, n, -1, -1] * umn[i - 1, nm1, p]
+                z1vec[i] = vwh_coef[i, n, 0, 1] * umn[i, np1, p] + vwh_coef[i, n, 0, -1] * umn[i, nm1, p]
+                a2vec[i] = vwh_coef[i, n, 1, 0] * umn[i + 1, n, p]
+                b2vec[i] = vwh_coef[i, n, -1, 0] * umn[i - 1, n, p]
+                z2vec[i] = vwh_coef[i, n, 0, 0] * umn[i, n, p]
+                vwh[1, p, nn1 + i] = -0.5(a1vec[i] + b1vec[i]) - 0.5ci * sp * (a2vec[i] + b2vec[i])
+                vwh[2, p, nn1 + i] = -0.5ci * (-a1vec[i] + b1vec[i]) - 0.5sp * (a2vec[i] - b2vec[i])
+                vwh[3, p, nn1 + i] = -z1vec[i] - sp * ci * z2vec[i]
+            end
+        end
+    end
+
+    return vwh
 end
 
 end # module SpecialFunctions
