@@ -1,7 +1,7 @@
 module Constants
 using OffsetArrays
 
-export ctx, get_offset_constants, get_offset_axial_constants, init!, reset!, ConstantContext
+export ctx, get_offset_constants, get_offset_axial_constants, init!, ConstantContext
 mutable struct ConstantContext
     nmax::Int64
     bcof::Array{Float64,2}
@@ -31,15 +31,6 @@ function get_offset_axial_constants(ctx::ConstantContext)
     fn = OffsetArray(ctx.fn, (-nmax):nmax, 1:nmax)
     fnp1 = OffsetArray(ctx.fnp1, (-nmax):nmax, 1:nmax)
     return vcc, fnm1, fn, fnp1
-end
-
-function reset!(ctx::ConstantContext)
-    ctx.nmax = 0
-    ctx.bcof = Array{Float64,2}(undef, 0, 0)
-    ctx.fnr = Array{Float64,1}(undef, 0)
-    ctx.monen = Array{Int64,1}(undef, 0)
-    ctx.vwh_coef = Array{Float64,4}(undef, 0, 0, 0, 0)
-    return
 end
 
 function init()
