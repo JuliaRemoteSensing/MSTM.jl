@@ -81,7 +81,7 @@ function init!(ctx::ConstantContext, notd)
 
     vwh_coef = OffsetArray(zeros(2notd + 1, notd, 3, 3), (-notd):notd, 1:notd, -1:1, -1:1)
 
-    for n in 1:notd
+    @simd for n in 1:notd
         nn1 = n * (n + 1)
         np1 = n + 1
         nm1 = n - 1
@@ -99,7 +99,7 @@ function init!(ctx::ConstantContext, notd)
         vwh_coef[m, n, 1, 0] = -fnorm2 * fnr[n - m] * fnr[np1 + m]
         vwh_coef[m, n, -1, 0] = -0
         vwh_coef[m, n, 0, 0] = -fnorm2 * m
-        for m in (-n + 1):(n - 1)
+        @simd for m in (-n + 1):(n - 1)
             mp1 = m + 1
             mm1 = m - 1
             vwh_coef[m, n, 1, 1] = -fnorm1 * n * fnr[np1 + m] * fnr[np1 + mp1]
