@@ -1,0 +1,7 @@
+[[spheres]]
+size = 1.0
+pos = [0.0, 0.0, 0.0]
+
+[[spheres]]
+size = 1.0
+pos = [0.0, 2.0, 0.0]

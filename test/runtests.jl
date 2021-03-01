@@ -315,5 +315,12 @@ using Libdl
         end
     end
 
+    @testset "Data" begin
+        @testset "from_file()" begin
+            config = MSTM.Data.from_file("fixtures/default.toml")
+            @test length(config.spheres) == 2
+        end
+    end
+
     Libdl.dlclose(mstm)
 end

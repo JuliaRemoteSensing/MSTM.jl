@@ -1,7 +1,7 @@
 module Constants
 using OffsetArrays
 
-export ctx, get_offset_constants, get_offset_axial_constants, init!, ConstantContext
+export get_offset_constants, get_offset_axial_constants, init!, ConstantContext
 mutable struct ConstantContext
     nmax::Int64
     bcof::Array{Float64,2}

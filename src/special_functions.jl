@@ -3,8 +3,6 @@ using LinearAlgebra
 using OffsetArrays
 using ..Constants
 
-export atcdim, ricbessel, richankel, cricbessel, crichankel, cspherebessel, vcfunc, normalizedlegendre
-
 const ci = 1.0im
 
 """

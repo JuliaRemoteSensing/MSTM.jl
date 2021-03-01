@@ -4,8 +4,6 @@ using LinearAlgebra
 using OffsetArrays
 using ..SpecialFunctions
 
-# Constants <=> numconstants
-
 function init!(mstm, notd::Int64)
     ccall(Libdl.dlsym(mstm, :__numconstants_MOD_init), Cvoid, (Ref{Int32},), convert(Int32, notd))
 
@@ -263,7 +261,7 @@ function axialtrancoefrecurrence(mstm, itype::Int64, r::Float64, ri::Array{Compl
     @assert length(ri) == 2
 
     init!(mstm, nmax)
-    ndim = atcdim(nmax, lmax)
+    ndim = SpecialFunctions.atcdim(nmax, lmax)
     ac = zeros(ComplexF64, ndim)
 
     ccall(
