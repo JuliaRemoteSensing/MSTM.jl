@@ -1,8 +1,12 @@
-using MSTM
-using Test
 using Libdl
+using MPI
+using MSTM
+using OffsetArrays
+using Test
 
 @testset "MSTM" begin
+    MPI.Init()
+
     mstm_lib = ("CI" => "true") in ENV ? "/home/runner/work/MSTM.jl/MSTM.jl/shared/mstm" : "../shared/mstm"
     mstm = Libdl.dlopen(mstm_lib)
 
@@ -153,12 +157,12 @@ using Libdl
                 ctx = MSTM.Constants.init()
 
                 nsphere = 3
-                nodr = [2, 2, 3]
+                nodr = [3, 3, 3]
                 α = 0.5
                 β = 0.5
-                rpos = [[3.2, -3.2, 1.2] [-3.4, 1.9, 1.8] [0.5, -0.3, 1.5]]
-                hostsphere = [0, 1, 0]
-                numberfieldexp = [2, 2, 3]
+                rpos = [[0.0, 0.0, 0.0] [0.0, 0.0, -0.5] [0.0, 0.0, -1.0]]
+                hostsphere = [0, 1, 2]
+                numberfieldexp = [3, 3, 3]
                 rimedium = [1.1 + 1.3im, 1.0 - 0.5im]
 
                 pmnp_julia = MSTM.SpecialFunctions.sphereplanewavecoef(
@@ -304,8 +308,8 @@ using Libdl
         end
 
         @testset "twobytwoinverse($mat)" for mat in [
-            [1.1 + 1.0im 2.2 - 1.5im; 3.3 - 0.2im -2.5 + 0.4im],
-            [1.1 + 1.0im 1.2 + 1.5im; 0.3 - 0.2im -1.5 + 0.3im],
+            [1.1+1.0im 2.2-1.5im; 3.3-0.2im -2.5+0.4im],
+            [1.1+1.0im 1.2+1.5im; 0.3-0.2im -1.5+0.3im],
         ]
             @test begin
                 imat_julia = MSTM.SpecialFunctions.twobytwoinverse(mat)
@@ -316,9 +320,59 @@ using Libdl
     end
 
     @testset "Data" begin
-        @testset "from_file()" begin
-            config = MSTM.Data.from_file("fixtures/default.toml")
+        @testset "read MSTM config from .toml file" begin
+            config = MSTM.Data.MSTMConfig("fixtures/default.toml")
             @test length(config.spheres) == 2
+        end
+    end
+
+    @testset "Mie" begin
+        @testset "mieoa($x, $ri, $nodr0, $qeps, $ri_medium)" for (x, ri, nodr0, qeps, ri_medium) in [
+            (0.35, [1.1 + 1.0im, 2.2 - 1.5im], 3, 1e-6, nothing),
+            (0.15, [1.1 + 1.0im, 2.2 - 1.5im], 3, 1e-6, [1.0 + 0.1im, 1.0 + 0.1im]),
+            (0.25, [1.1 + 1.0im, 2.2 - 1.5im], 4, 0.0, [1.0 + 0.1im, 1.0 + 0.1im]),
+            (0.45, [1.1 + 1.0im, 2.2 - 1.5im], 4, -6.0, [1.0 + 0.1im, 1.0 + 0.1im]),
+        ]
+            @test begin
+                qext_julia, qsca_julia, qabs_julia, nodr_julia, _, _, _, _, _, _ =
+                    MSTM.Mie.mieoa(x, ri, nodr0, qeps, ri_medium = ri_medium)
+                qext_fortran, qsca_fortran, qabs_fortran, nodr_fortran =
+                    MSTM.Wrapper.mieoa(mstm, x, ri, nodr0, qeps, ri_medium = ri_medium)
+                isapprox(qext_julia, qext_fortran) &&
+                    isapprox(qsca_julia, qsca_fortran) &&
+                    isapprox(qabs_julia, qabs_fortran) &&
+                    nodr_julia == nodr_fortran
+            end
+        end
+
+        @testset "miecoefcalc($xsp, $hostsphere, $numberfieldexp, $qeps) (No T-Matrix files)" for (
+            xsp,
+            hostsphere,
+            numberfieldexp,
+            qeps,
+        ) in [
+            ([1.2, 0.4, 0.1], [0, 1, 2], [2, 2, 2], 1e-4),
+            ([1.2, 0.4, 0.1], [0, 1, 2], [3, 3, 3], 1e-6),
+            ([1.2, 0.4, 0.1], [0, 1, 2], [3, 3, 3], 1e-8),
+            ([1.2, 0.4, 0.1], [0, 1, 2], [4, 4, 4], 1e-6),
+        ]
+            @test begin
+                ri = OffsetArray(
+                    [[1.1 + 1.3im, 0.1 + 0.0im] [1.2 + 0.2im, 0.1 + 0.0im] [1.5 - 0.4im, 0.1 + 0.0im] [
+                        1.5 + 1.5im,
+                        0.1 + 0.0im,
+                    ]],
+                    1:2,
+                    0:3,
+                )
+                params = MSTM.Data.MSTMParameters()
+                mie_julia = MSTM.Mie.miecoefcalc(params, xsp, ri, hostsphere, numberfieldexp, qeps)
+                mie_fortran = MSTM.Wrapper.miecoefcalc(mstm, xsp, ri, hostsphere, numberfieldexp, qeps)
+                isapprox(mie_julia.an, mie_fortran.an) &&
+                    isapprox(mie_julia.cn, mie_fortran.cn) &&
+                    isapprox(mie_julia.qext, mie_fortran.qext) &&
+                    isapprox(mie_julia.qabs, mie_fortran.qabs)
+            end
         end
     end
 

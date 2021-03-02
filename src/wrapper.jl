@@ -2,7 +2,10 @@ module Wrapper
 using Libdl
 using LinearAlgebra
 using OffsetArrays
+using ..Mie
 using ..SpecialFunctions
+
+# Constants <=> numconstants
 
 function init!(mstm, notd::Int64)
     ccall(Libdl.dlsym(mstm, :__numconstants_MOD_init), Cvoid, (Ref{Int32},), convert(Int32, notd))
@@ -426,21 +429,224 @@ function vwhaxialcalc(mstm, rpos::Array{Float64,1}, ri::Array{ComplexF64,1}, nod
     return vwh
 end
 
-function twobytwoinverse(mstm, mat::Array{ComplexF64, 2})
+function twobytwoinverse(mstm, mat::Array{ComplexF64,2})
     @assert size(mat) == (2, 2)
     @assert det(mat) != 0
 
     imat = zeros(ComplexF64, 2, 2)
 
-    ccall(
-        Libdl.dlsym(mstm, :__specialfuncs_MOD_twobytwoinverse),
-        Cvoid,
-        (Ptr{ComplexF64}, Ptr{ComplexF64}),
-        mat,
-        imat,
-    )
+    ccall(Libdl.dlsym(mstm, :__specialfuncs_MOD_twobytwoinverse), Cvoid, (Ptr{ComplexF64}, Ptr{ComplexF64}), mat, imat)
 
     return imat
 end
+
+# Mie <=> miedata
+
+function miecoefcalc(
+    mstm,
+    xsp::Array{Float64,1},
+    ri::OffsetArray{ComplexF64,2},
+    hostsphere::Array{Int64,1},
+    numberfieldexp::Array{Int64,1},
+    qeps::Float64,
+)
+    nsphere = length(xsp)
+    @assert size(ri) == (2, nsphere + 1)
+    @assert length(hostsphere) == nsphere
+    @assert length(numberfieldexp) == nsphere
+
+    hostsphere = convert(Array{Int32,1}, hostsphere)
+    numberfieldexp = convert(Array{Int32,1}, numberfieldexp)
+
+    tmatrix_file = Ptr{String}()
+    ccall(
+        Libdl.dlsym(mstm, :__miecoefdata_MOD_miecoefcalc),
+        Cvoid,
+        (Ref{Int32}, Ptr{Float64}, Ptr{ComplexF64}, Ptr{Int32}, Ptr{Int32}, Ref{Float64}, Ptr{String}),
+        convert(Int32, nsphere),
+        xsp,
+        ri,
+        hostsphere,
+        numberfieldexp,
+        qeps,
+        tmatrix_file,
+    )
+
+    return getmiedataall(mstm, nsphere)
+end
+
+function mieoa(
+    mstm,
+    x::Float64,
+    ri::Array{ComplexF64,1},
+    nodr0::Int64,
+    qeps::Float64;
+    ri_medium::Union{Array{ComplexF64,1},Nothing} = nothing,
+)
+    @assert length(ri) == 2
+    @assert isnothing(ri_medium) || length(ri_medium) == 2
+
+    qext = Ref{Float64}(0.0)
+    qsca = Ref{Float64}(0.0)
+    qabs = Ref{Float64}(0.0)
+    nodr = Ref{Int32}(nodr0)
+
+    # FIXME: present check does not work normally, pass dummy arrays as a workaround
+    anp_mie = zeros(ComplexF64, 2, 2, 100)
+    dnp_mie = zeros(ComplexF64, 2, 2, 100)
+    unp_mie = zeros(ComplexF64, 2, 2, 100)
+    vnp_mie = zeros(ComplexF64, 2, 2, 100)
+    cnp_mie = zeros(ComplexF64, 2, 2, 100)
+    if isnothing(ri_medium)
+        ri_medium = [1.0 + 0.0im, 1.0 + 0.0im]
+    end
+    anp_inv_mie = zeros(ComplexF64, 2, 2, 100)
+
+    ccall(
+        Libdl.dlsym(mstm, :__miecoefdata_MOD_mieoa),
+        Cvoid,
+        (
+            Ref{Float64},
+            Ptr{ComplexF64},
+            Ref{Int32},
+            Ref{Float64},
+            Ref{Float64},
+            Ref{Float64},
+            Ref{Float64},
+            Ptr{ComplexF64},
+            Ptr{ComplexF64},
+            Ptr{ComplexF64},
+            Ptr{ComplexF64},
+            Ptr{ComplexF64},
+            Ptr{ComplexF64},
+            Ptr{ComplexF64},
+        ),
+        x,
+        ri,
+        nodr,
+        qeps,
+        qext,
+        qsca,
+        qabs,
+        anp_mie,
+        dnp_mie,
+        unp_mie,
+        vnp_mie,
+        cnp_mie,
+        ri_medium,
+        anp_inv_mie,
+    )
+
+    return qext[], qsca[], qabs[], convert(Int64, nodr[])
+end
+
+function getmiedataall(mstm, nsphere::Int64)::MieData
+    # Do not know termstot at first, so we set an's and cn's sizes to a large number.
+
+    MAXIMUM_TERM = 100_000
+    number_eqns = Ref{Int32}(0)
+    max_order = Ref{Int32}(0)
+    order = zeros(Int32, nsphere)
+    offset = zeros(Int32, nsphere + 1)
+    block = zeros(Int32, nsphere)
+    block_offset = zeros(Int32, nsphere + 1)
+    number_field_expansions = zeros(Int32, nsphere)
+    is_optically_active = fill(false, nsphere)
+    qext = zeros(nsphere)
+    qabs = zeros(nsphere)
+    an = zeros(ComplexF64, MAXIMUM_TERM)
+    cn = zeros(ComplexF64, MAXIMUM_TERM)
+
+    ccall(
+        Libdl.dlsym(mstm, :__miecoefdata_MOD_getmiedataallreq),
+        Cvoid,
+        (
+            Ref{Int32},
+            Ptr{Int32},
+            Ptr{Int32},
+            Ptr{Int32},
+            Ptr{Int32},
+            Ptr{Float64},
+            Ptr{Float64},
+            Ptr{ComplexF64},
+            Ptr{ComplexF64},
+            Ref{Int32},
+            Ref{Int32},
+            Ptr{Bool},
+            Ptr{Int32},
+        ),
+        convert(Int32, nsphere),
+        order,
+        block,
+        offset,
+        block_offset,
+        qext,
+        qabs,
+        an,
+        cn,
+        number_eqns,
+        max_order,
+        is_optically_active,
+        number_field_expansions,
+    )
+
+    mie = MieData()
+    mie.number_spheres = nsphere
+    mie.block = convert(Array{Int64,1}, block)
+    mie.offset = convert(Array{Int64,1}, offset)
+    mie.block_offset = convert(Array{Int64,1}, block_offset)
+    mie.is_optically_active = is_optically_active
+    mie.order = convert(Array{Int64,1}, order)
+    mie.max_order = convert(Int64, max_order.x)
+    mie.number_field_expansions = convert(Array{Int64,1}, number_field_expansions)
+    mie.number_eqns = convert(Int32, number_eqns.x)
+    mie.qext = qext
+    mie.qabs = qabs
+
+    ntermstot = offset[nsphere + 1]
+    mie.an = an[1:ntermstot]
+    mie.cn = cn[1:ntermstot]
+    return mie
+end
+
+# # ? <=> spheredata
+
+# function getspheredata(mstm)
+#     # Do not know nspheres at first, so we set the arrays' sizes to be a large number.
+
+#     MAXIMUM_NSPHERE = 100_000
+#     number_spheres = Ref{Int32}(0)
+#     sphere_size_parameters = zeros(MAXIMUM_NSPHERE)
+#     sphere_positions = zeros(3, MAXIMUM_NSPHERE)
+#     sphere_refractive_indices = OffsetArray(zeros(ComplexF64, 2, MAXIMUM_NSPHERE + 1), 1:2, 0:MAXIMUM_NSPHERE)
+#     volume_size_parameter = Ref{Float64}(0.0)
+#     host_spheres = zeros(Int32, MAXIMUM_NSPHERE)
+#     tmatrix_on_file = fill(false, MAXIMUM_NSPHERE)
+#     tmatrix_file = Ptr{String}()
+
+#     ccall(
+#         Libdl.dlsym(mstm, :__spheredata_MOD_getspheredata),
+#         Cvoid,
+#         (Ref{Int32}, Ptr{Float64}, Ptr{Float64}, Ptr{ComplexF64}, Ref{Float64}, Ptr{Int32}, Ptr{Bool}, Ptr{String}),
+#         number_spheres,
+#         Ptr{Float64}(),
+#         Ptr{Float64}(),
+#         Ptr{ComplexF64}(),
+#         volume_size_parameter,
+#         Ptr{Int32}(),
+#         Ptr{Bool}(),
+#         Ptr{String}(),
+#         # sphere_size_parameters,
+#         # sphere_positions,
+#         # sphere_refractive_indices,
+#         # volume_size_parameter,
+#         # host_spheres,
+#         # tmatrix_on_file,
+#         # tmatrix_file,
+#     )
+
+#     number_spheres = convert(Int64, number_spheres.x)
+#     return number_spheres
+# end
 
 end # module Wrapper

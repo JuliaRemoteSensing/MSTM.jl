@@ -2,7 +2,9 @@ module Data
 
 using Configurations: Configurations
 
-Configurations.@option "sphere" struct Sphere
+export TMaxtrix, MSTMParameters
+
+Configurations.@option "sphere" struct SphereConfig
     size::Float64
     pos::Array{Float64,1}
     real_ref_index::Union{Float64,Nothing} = nothing
@@ -61,11 +63,33 @@ Configurations.@option "run" struct MSTMConfig
     calculate_t_matrix::Bool = true
     t_matrix_file::String = "tm_default.dat"
     t_matrix_convergence_epsilon::Float64 = 1e-7
-    spheres::Array{Sphere}
+    spheres::Array{SphereConfig}
 end
 
-function from_file(filename::String)
+"""
+    MSTMConfig(filename::String)
+
+Read configurations from a .toml file.
+"""
+function MSTMConfig(filename::String)
     return Configurations.from_toml(MSTMConfig, filename)
 end
+
+struct Sphere end
+
+function Sphere(config::MSTMConfig, sphere_config::SphereConfig) end
+
+struct MSTMParameters end
+
+function MSTMParameters(config::MSTMConfig) end
+
+struct TMaxtrix end
+
+"""
+    TMaxtrix(filename::String)
+
+Read a previously calculated T matrix.
+"""
+function TMaxtrix(filename::String) end
 
 end # module Data

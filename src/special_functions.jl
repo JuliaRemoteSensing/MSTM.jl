@@ -3,6 +3,8 @@ using LinearAlgebra
 using OffsetArrays
 using ..Constants
 
+export cricbessel, crichankel, twobytwoinverse
+
 const ci = 1.0im
 
 """
