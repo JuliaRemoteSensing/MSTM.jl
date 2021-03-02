@@ -288,4 +288,42 @@ function mieoa(
     anpinv[:, :, 1:nodr]
 end
 
+function onemiecoeffmult(mie::MieData, i::Int64, cx::OffsetArray{ComplexF64,3}, mie_coefficent::Char = 'a')
+    @assert length(mie.order) >= i
+    nodr = mie.order[i]
+
+    @assert size(cx) == (nodr + 2, nodr, 2)
+
+    nterms = 4nodr
+    n1 = mie.offset[i] + 1
+    n2 = mie.offset[i] + nterms
+
+    an1 = if mie_coefficent == 'a'
+        reshape(mie.an[n1:n2], 2, 2, nodr)
+    elseif mie_coefficent == 'c'
+        reshape(mie.cn[n1:n2], 2, 2, nodr)
+    elseif mie_coefficent == 'd'
+        reshape(mie.dn[n1:n2], 2, 2, nodr)
+    elseif mie_coefficent == 'u'
+        reshape(mie.un[n1:n2], 2, 2, nodr)
+    else
+        reshape(mie.vn[n1:n2], 2, 2, nodr)
+    end
+
+    cy = OffsetArray(zeros(ComplexF64, nodr + 2, nodr, 2), 0:(nodr + 1), 1:nodr, 1:2)
+
+    for n in 1:nodr
+        for p in 1:2
+            for i in n:-1:1
+                cy[n + 1, i, p] = an1[p, 1, n] * cx[n + 1, i, 1] + an1[p, 2, n] * cx[n + 1, i, 2]
+            end
+            for i in 0:n
+                cy[i, n, p] = an1[p, 1, n] * cx[i, n, 1] + an1[p, 2, n] * cx[i, n, 2]
+            end
+        end
+    end
+
+    return cy
+end
+
 end # module Mie

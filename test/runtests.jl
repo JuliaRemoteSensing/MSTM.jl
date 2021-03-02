@@ -116,15 +116,15 @@ using Test
             end
         end
 
-        @testset "pifunc($cb, $ephi, $nmax, $ndim)" for (cb, ephi, nmax, ndim) in [
+        @testset "pifunc($cb, $E_ϕ, $nmax, $ndim)" for (cb, E_ϕ, nmax, ndim) in [
             (0.5, 1 + 1.0im, 10, 10),
             (-0.21, 0.2 - 0.3im, 14, 20),
             (0.98, -1.2 + 2.5im, 15, 15),
         ]
             @test begin
                 ctx = MSTM.Constants.init()
-                π_julia = MSTM.SpecialFunctions.pifunc(ctx, cb, ephi, nmax, ndim)
-                π_fortran = MSTM.Wrapper.pifunc(mstm, cb, ephi, nmax, ndim)
+                π_julia = MSTM.SpecialFunctions.pifunc(ctx, cb, E_ϕ, nmax, ndim)
+                π_fortran = MSTM.Wrapper.pifunc(mstm, cb, E_ϕ, nmax, ndim)
                 isapprox(π_julia, π_fortran)
             end
         end
@@ -327,6 +327,15 @@ using Test
     end
 
     @testset "Mie" begin
+        ri = OffsetArray(
+            [[1.1 + 1.3im, 0.1 + 0.0im] [1.2 + 0.2im, 0.1 + 0.0im] [1.5 - 0.4im, 0.1 + 0.0im] [
+                1.5 + 1.5im,
+                0.1 + 0.0im,
+            ]],
+            1:2,
+            0:3,
+        )
+
         @testset "mieoa($x, $ri, $nodr0, $qeps, $ri_medium)" for (x, ri, nodr0, qeps, ri_medium) in [
             (0.35, [1.1 + 1.0im, 2.2 - 1.5im], 3, 1e-6, nothing),
             (0.15, [1.1 + 1.0im, 2.2 - 1.5im], 3, 1e-6, [1.0 + 0.1im, 1.0 + 0.1im]),
@@ -357,14 +366,6 @@ using Test
             ([1.2, 0.4, 0.1], [0, 1, 2], [4, 4, 4], 1e-6),
         ]
             @test begin
-                ri = OffsetArray(
-                    [[1.1 + 1.3im, 0.1 + 0.0im] [1.2 + 0.2im, 0.1 + 0.0im] [1.5 - 0.4im, 0.1 + 0.0im] [
-                        1.5 + 1.5im,
-                        0.1 + 0.0im,
-                    ]],
-                    1:2,
-                    0:3,
-                )
                 params = MSTM.Data.MSTMParameters()
                 mie_julia = MSTM.Mie.miecoefcalc(params, xsp, ri, hostsphere, numberfieldexp, qeps)
                 mie_fortran = MSTM.Wrapper.miecoefcalc(mstm, xsp, ri, hostsphere, numberfieldexp, qeps)
@@ -372,6 +373,27 @@ using Test
                     isapprox(mie_julia.cn, mie_fortran.cn) &&
                     isapprox(mie_julia.qext, mie_fortran.qext) &&
                     isapprox(mie_julia.qabs, mie_fortran.qabs)
+            end
+        end
+
+        @testset "onemiecoeffmult($i, $mie_coefficent)" for (i, mie_coefficent) in
+                                                            [(1, 'a'), (2, 'c'), (3, 'd'), (2, 'u'), (3, 'v')]
+            @test begin
+                xsp = [1.2, 0.4, 0.1]
+                hostsphere = [0, 1, 2]
+                numberfieldexp = [3, 3, 3]
+                qeps = 1e-6
+                cb = 0.5
+                E_ϕ = 1.0 + 1.0im
+                params = MSTM.Data.MSTMParameters()
+                mie = MSTM.Mie.miecoefcalc(params, xsp, ri, hostsphere, numberfieldexp, qeps)
+                nodr = mie.order[i]
+                ctx = MSTM.Constants.init()
+                MSTM.Wrapper.miecoefcalc(mstm, xsp, ri, hostsphere, numberfieldexp, qeps)
+                cx = MSTM.SpecialFunctions.pifunc(ctx, cb, E_ϕ, nodr, nodr)
+                cy_julia = MSTM.Mie.onemiecoeffmult(mie, i, cx, mie_coefficent)
+                cy_fortran = MSTM.Wrapper.onemiecoeffmult(mstm, i, nodr, cx, mie_coefficent)
+                isapprox(cy_julia, cy_fortran)
             end
         end
     end

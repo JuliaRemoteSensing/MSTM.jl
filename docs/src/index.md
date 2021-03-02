@@ -4,13 +4,11 @@ CurrentModule = MSTM
 
 # MSTM
 
-```@index
-```
-
 ```@autodocs
-Modules = [MSTM]
+Modules = [MSTM.Constants, MSTM.SpecialFunctions, MSTM.Data, MSTM.Mie, MSTM.Wrapper]
 ```
 
-```@docs
-SpecialFunctions.ricbessel
+## Index
+
+```@index
 ```

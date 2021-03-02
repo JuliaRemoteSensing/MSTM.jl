@@ -508,33 +508,33 @@ Vector spherical harmonic function.
 
 TODO: `ndim` seems to be useless. Can it be safely deleted?
 """
-function pifunc(ctx::ConstantContext, cb::Float64, ephi::ComplexF64, nmax::Int64, ndim::Int64)
+function pifunc(ctx::ConstantContext, cb::Float64, E_ϕ::ComplexF64, nmax::Int64, ndim::Int64)
     drot = rotcoef(ctx, cb, 1, nmax)
 
     _, fnr, _, _ = get_offset_constants(ctx)
 
-    ephim = OffsetArray(zeros(ComplexF64, 2nmax + 1), (-nmax):nmax)
-    ephim[0] = 1.0
+    E_ϕm = OffsetArray(zeros(ComplexF64, 2nmax + 1), (-nmax):nmax)
+    E_ϕm[0] = 1.0
 
     # ndim should be as large as or larger than nmax
     π_vec = OffsetArray(zeros(ComplexF64, ndim + 2, ndim, 2), 0:(ndim + 1), 1:ndim, 1:2)
 
     for m in 1:nmax
-        ephim[m] = ephi * ephim[m - 1]
-        ephim[-m] = conj(ephim[m])
+        E_ϕm[m] = E_ϕ * E_ϕm[m - 1]
+        E_ϕm[-m] = conj(E_ϕm[m])
     end
 
     for n in 1:nmax
         cin = (-1im)^(n) * fnr[2n + 1]
         nn1 = n * (n + 1)
         for m in n:-1:1
-            π_vec[n + 1, m, 1] = cin * drot[1, nn1 - m] * ephim[-m]
-            π_vec[n + 1, m, 2] = cin * drot[-1, nn1 - m] * ephim[-m]
+            π_vec[n + 1, m, 1] = cin * drot[1, nn1 - m] * E_ϕm[-m]
+            π_vec[n + 1, m, 2] = cin * drot[-1, nn1 - m] * E_ϕm[-m]
         end
 
         for m in 0:n
-            π_vec[m, n, 1] = cin * drot[1, nn1 + m] * ephim[m]
-            π_vec[m, n, 2] = cin * drot[-1, nn1 + m] * ephim[m]
+            π_vec[m, n, 1] = cin * drot[1, nn1 + m] * E_ϕm[m]
+            π_vec[m, n, 2] = cin * drot[-1, nn1 + m] * E_ϕm[m]
         end
     end
 

@@ -609,6 +609,23 @@ function getmiedataall(mstm, nsphere::Int64)::MieData
     return mie
 end
 
+function onemiecoeffmult(mstm, i::Int64, nodr::Int64, cx::OffsetArray{ComplexF64,3}, mie_coefficent::Char = 'a')
+    cy = OffsetArray(zeros(ComplexF64, nodr + 2, nodr, 2), 0:(nodr + 1), 1:nodr, 1:2)
+
+    ccall(
+        Libdl.dlsym(mstm, :__miecoefdata_MOD_onemiecoeffmult),
+        Cvoid,
+        (Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}, Ptr{ComplexF64}, Ref{Cchar}),
+        convert(Int32, i),
+        convert(Int32, nodr),
+        cx,
+        cy,
+        mie_coefficent,
+    )
+
+    return cy
+end
+
 # # ? <=> spheredata
 
 # function getspheredata(mstm)
