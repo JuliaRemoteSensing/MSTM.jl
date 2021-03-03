@@ -326,4 +326,106 @@ function onemiecoeffmult(mie::MieData, i::Int64, cx::OffsetArray{ComplexF64,3}, 
     return cy
 end
 
+"""
+    multmiecoeffmult(mie, nrhs, idir, ain, rhs_list)
+
+Generalized Mie coefficient multiplication.
+
+If idir != 1, we do the transpose.
+"""
+function multmiecoeffmult(
+    mie::MieData,
+    nrhs::Int64,
+    idir::Int64,
+    ain::Array{ComplexF64,1},
+    rhs_list::Union{Array{Bool,1},Nothing} = nothing,
+)
+    neqns = mie.number_eqns
+    @assert length(ain) == nrhs * neqns
+    @assert isnothing(rhs_list) || length(rhs_list) == nrhs
+
+    if isnothing(rhs_list)
+        rhs_list = fill(true, nrhs)
+    end
+
+    noffi = 0
+    aout = zeros(ComplexF64, nrhs * neqns)
+    for i in 1:(mie.number_spheres)
+        nodri = mie.order[i]
+        nblki = 2nodri * (nodri + 2)
+        b11 = noffi + 1
+
+        # TODO: Implement usage of T-Matrix files
+        if mie.tm_on_file[i]
+        else
+            aout_t = OffsetArray(zeros(ComplexF64, nodri + 2, nodri, 2, nrhs), 0:(nodri + 1), 1:nodri, 1:2, 1:nrhs)
+            b12 = b11 + nblki * nrhs - 1
+            gin_t = OffsetArray(reshape(ain[b11:b12], nodri + 2, nodri, 2, nrhs), 0:(nodri + 1), 1:nodri, 1:2, 1:nrhs)
+            nterms = 4nodri
+            n1 = mie.offset[i] + 1
+            n2 = mie.offset[i] + nterms
+            an1 = reshape(mie.an[n1:n2], 2, 2, nodri)
+            if mie.number_field_expansions[i] == 1
+                for j in 1:nrhs
+                    if rhs_list[j]
+                        for n in 1:nodri
+                            for p in 1:2
+                                for q in 1:2
+                                    coeff = idir == 1 ? an1[p, q, n] : an1[q, p, n]
+                                    for k in n:-1:1
+                                        aout_t[n + 1, k, p, j] += gin_t[n + 1, k, q, j] * coeff
+                                    end
+                                    for k in 0:n
+                                        aout_t[k, n, p, j] += gin_t[k, n, q, j] * coeff
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                aout[b11:b12] = reshape(aout_t, nblki * nrhs)
+            else
+                # TODO: It seems that number of field expansions cannot exceed 2. Need to confirm this.
+
+                b21 = noffi + nblki * nrhs + 1
+                b22 = b21 + nblki * nrhs - 1
+                bin_t =
+                    OffsetArray(reshape(ain[b21:b22], nodri + 2, nodri, 2, nrhs), 0:(nodri + 1), 1:nodri, 1:2, 1:nrhs)
+                dn1 = reshape(mie.dn[n1:n2], 2, 2, nodri)
+                un1 = reshape(mie.un[n1:n2], 2, 2, nodri)
+                vn1 = reshape(mie.vn[n1:n2], 2, 2, nodri)
+                fout_t = OffsetArray(zeros(ComplexF64, nodri + 2, nodri, 2, nrhs), 0:(nodri + 1), 1:nodri, 1:2, 1:nrhs)
+                for j in 1:nrhs
+                    if rhs_list[j]
+                        for n in 1:nodri
+                            for p in 1:2
+                                for q in 1:2
+                                    coeff1, coeff2, coeff3, coeff4 =
+                                        idir == 1 ? (an1[p, q, n], un1[p, q, n], dn1[p, q, n], vn1[p, q, n]) :
+                                        (an1[q, p, n], dn1[q, p, n], un1[q, p, n], vn1[q, p, n])
+                                    for k in n:-1:1
+                                        aout_t[n + 1, k, p, j] +=
+                                            gin_t[n + 1, k, q, j] * coeff1 + bin_t[n + 1, k, q, j] * coeff2
+                                        fout_t[n + 1, k, p, j] +=
+                                            gin_t[n + 1, k, q, j] * coeff3 + bin_t[n + 1, k, q, j] * coeff4
+                                    end
+                                    for k in 0:n
+                                        aout_t[k, n, p, j] += gin_t[k, n, q, j] * coeff1 + bin_t[k, n, q, j] * coeff2
+                                        fout_t[k, n, p, j] += gin_t[k, n, q, j] * coeff3 + bin_t[k, n, q, j] * coeff4
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                aout[b11:b12] = reshape(aout_t, nblki * nrhs)
+                aout[b21:b22] = reshape(fout_t, nblki * nrhs)
+            end
+        end
+        noffi += nblki * nrhs * mie.number_field_expansions[i]
+    end
+
+    return aout
+end
+
 end # module Mie

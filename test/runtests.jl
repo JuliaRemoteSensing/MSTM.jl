@@ -396,6 +396,27 @@ using Test
                 isapprox(cy_julia, cy_fortran)
             end
         end
+
+        @testset "multmiecoeffmult" begin
+            xsp = [1.2, 0.4, 0.1]
+            hostsphere = [0, 1, 2]
+            numberfieldexp = [3, 2, 1]
+            qeps = 1e-6
+            cb = 0.5
+            E_ϕ = 1.0 + 1.0im
+            params = MSTM.Data.MSTMParameters()
+            mie = MSTM.Mie.miecoefcalc(params, xsp, ri, hostsphere, numberfieldexp, qeps)
+            MSTM.Wrapper.miecoefcalc(mstm, xsp, ri, hostsphere, numberfieldexp, qeps)
+            for i in 1:4
+                @test begin
+                    nrhs = i + 3
+                    ain = 1.0im * rand(mie.number_eqns * nrhs) + rand(mie.number_eqns * nrhs)
+                    aout_julia = MSTM.Mie.multmiecoeffmult(mie, nrhs, i % 2, ain)
+                    aout_fortran = MSTM.Wrapper.multmiecoeffmult(mstm, mie.number_eqns, nrhs, i % 2, ain)
+                    isapprox(aout_julia, aout_fortran)
+                end
+            end
+        end
     end
 
     Libdl.dlclose(mstm)

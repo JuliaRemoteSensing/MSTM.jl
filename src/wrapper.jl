@@ -626,6 +626,38 @@ function onemiecoeffmult(mstm, i::Int64, nodr::Int64, cx::OffsetArray{ComplexF64
     return cy
 end
 
+function multmiecoeffmult(
+    mstm,
+    neqns::Int64,
+    nrhs::Int64,
+    idir::Int64,
+    ain::Array{ComplexF64,1},
+    rhs_list::Union{Array{Bool,1},Nothing} = nothing,
+)
+    @assert length(ain) == neqns * nrhs
+    @assert isnothing(rhs_list) || length(rhs_list) == nrhs
+
+    if isnothing(rhs_list)
+        rhs_list = fill(true, nrhs)
+    end
+
+    aout = zeros(ComplexF64, neqns * nrhs)
+
+    ccall(
+        Libdl.dlsym(mstm, :__miecoefdata_MOD_multmiecoeffmult),
+        Cvoid,
+        (Ref{Int32}, Ref{Int32}, Ref{Int32}, Ptr{ComplexF64}, Ptr{ComplexF64}, Ptr{Int32}),
+        convert(Int32, neqns),
+        convert(Int32, nrhs),
+        convert(Int32, idir),
+        ain,
+        aout,
+        convert(Array{Int32,1}, rhs_list), # Fortran bool takes 4 bytes by default !!!
+    )
+
+    return aout
+end
+
 # # ? <=> spheredata
 
 # function getspheredata(mstm)
