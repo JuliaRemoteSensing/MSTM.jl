@@ -372,7 +372,14 @@ using Test
                 isapprox(mie_julia.an, mie_fortran.an) &&
                     isapprox(mie_julia.cn, mie_fortran.cn) &&
                     isapprox(mie_julia.qext, mie_fortran.qext) &&
-                    isapprox(mie_julia.qabs, mie_fortran.qabs)
+                    isapprox(mie_julia.qabs, mie_fortran.qabs) &&
+                    mie_julia.order == mie_fortran.order &&
+                    mie_julia.offset == mie_fortran.offset && 
+                    mie_julia.block == mie_fortran.block &&
+                    mie_julia.block_offset == mie_fortran.block_offset &&
+                    mie_julia.number_field_expansions == mie_fortran.number_field_expansions &&
+                    mie_julia.is_optically_active == mie_fortran.is_optically_active &&
+                    mie_julia.number_eqns == mie_fortran.number_eqns
             end
         end
 

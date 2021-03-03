@@ -551,7 +551,7 @@ function getmiedataall(mstm, nsphere::Int64)::MieData
     block = zeros(Int32, nsphere)
     block_offset = zeros(Int32, nsphere + 1)
     number_field_expansions = zeros(Int32, nsphere)
-    is_optically_active = fill(false, nsphere)
+    is_optically_active = zeros(Int32, nsphere)
     qext = zeros(nsphere)
     qabs = zeros(nsphere)
     an = zeros(ComplexF64, MAXIMUM_TERM)
@@ -572,7 +572,7 @@ function getmiedataall(mstm, nsphere::Int64)::MieData
             Ptr{ComplexF64},
             Ref{Int32},
             Ref{Int32},
-            Ptr{Bool},
+            Ptr{Int32},
             Ptr{Int32},
         ),
         convert(Int32, nsphere),
@@ -595,7 +595,7 @@ function getmiedataall(mstm, nsphere::Int64)::MieData
     mie.block = convert(Array{Int64,1}, block)
     mie.offset = convert(Array{Int64,1}, offset)
     mie.block_offset = convert(Array{Int64,1}, block_offset)
-    mie.is_optically_active = is_optically_active
+    mie.is_optically_active = convert(Array{Bool, 1}, is_optically_active)
     mie.order = convert(Array{Int64,1}, order)
     mie.max_order = convert(Int64, max_order.x)
     mie.number_field_expansions = convert(Array{Int64,1}, number_field_expansions)
